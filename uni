@@ -1,0 +1,1944 @@
+#!/usr/bin/env php
+<?php
+
+namespace UniverseNaiveImporter {
+
+
+    use ProgramPrinter\ProgramPrinter;
+    use ProgramPrinter\ProgramPrinterInterface;
+    use UniverseNaiveImporter\Exception\UniverseNaiveImporterException;
+    use UniverseNaiveImporter\Importer\UniverseImporterInterface;
+    use UniverseNaiveImporter\ImportSummary\ImportSummary;
+    use UniverseNaiveImporter\ImportSummary\ImportSummaryInterface;
+
+    /**
+     * This is the naive importer for the universe framework.
+     * It is naive because it doesn't try to deal with version numbers (when importing a planet),
+     * it just uses the latest version available.
+     *
+     *
+     * What you can do with this class is:
+     *
+     *
+     * - import planet(s)
+     * - list available planets
+     *
+     *
+     *
+     */
+
+    /**
+     * This is the naive importer for the universe framework.
+     * It is naive because it doesn't try to deal with version numbers (when importing a planet),
+     * it just uses the latest version available.
+     *
+     *
+     * What you can do with this class is:
+     *
+     *
+     * - import planet(s)
+     * - list available planets
+     * - get available planets
+     *
+     *
+     *
+     *
+     *
+     */
+    class UniverseNaiveImporter
+    {
+
+
+        private $appDir;
+        private $planetsRelativePath;
+        /**
+         *
+         * By default, the value is false, which means that the import is skipped
+         * if the planet is already there.
+         * However, sometimes you want to upgrade from an older to a new version for a given planet.
+         * In that case, you can put this flag to true; it will upgrade every planet and dependencies.
+         *
+         * bool,
+         */
+        private $_forceImport;
+        private $printer;
+
+
+        /**
+         * @var UniverseImporterInterface[]
+         */
+        private $importers;
+
+
+        public function __construct()
+        {
+            $this->planetsRelativePath = "class-planets";
+            $this->importers = [];
+            $this->_forceImport = false;
+        }
+
+        public static function create()
+        {
+            return new static();
+        }
+
+        public function setAppDir($appDir)
+        {
+            $this->appDir = $appDir;
+            return $this;
+        }
+
+        public function setPlanetsRelativePath($planetsRelativePath)
+        {
+            $this->planetsRelativePath = $planetsRelativePath;
+            return $this;
+        }
+
+        public function setProgramPrinter(ProgramPrinterInterface $printer)
+        {
+            $this->printer = $printer;
+            return $this;
+        }
+
+
+        public function addImporter(UniverseImporterInterface $importer)
+        {
+            $this->importers[] = $importer;
+            return $this;
+        }
+
+        public function forceImport($forceImport)
+        {
+            $this->_forceImport = $forceImport;
+            return $this;
+        }
+
+
+        /**
+         * Import a planet and its dependencies.
+         * Returns a boolean indicating whether or not the planet was successfully imported.
+         *
+         *
+         * Universe is passed to avoid ambiguity, in case multiple planets have the same name.
+         *
+         * @return ImportSummaryInterface
+         */
+        public function import($planets, $universe = null)
+        {
+            if (null === $this->appDir) {
+                throw new UniverseNaiveImporterException("appDir not set");
+            }
+
+
+            $planetsDir = $this->appDir . "/" . $this->planetsRelativePath;
+
+            if (is_array($planets)) {
+
+                $all = [];
+                foreach ($this->importers as $importer) {
+                    $importer->forceImport($this->_forceImport);
+
+
+                    $className = get_class($importer);
+
+                    $all[$className]["instance"] = $importer;
+                    foreach ($planets as $planetName) {
+                        if (true === $importer->canImport($planetName, $universe)) {
+                            $all[$className]["planets"][] = $planetName;
+                            continue;
+                        }
+                    }
+                }
+
+
+                $uber = [
+                    'successful' => true,
+                    'reinstalledPlanets' => [],
+                    'alreadyInstalledPlanets' => [],
+                    'uninstalledPlanets' => [],
+                ];
+                foreach ($all as $className => $info) {
+                    /**
+                     * @var UniverseImporterInterface $importer
+                     */
+                    $importer = $info['instance'];
+                    $planets = $info['planets'];
+
+                    $summary = $importer->import($planetsDir, $planets);
+                    if (false === $summary->isSuccessful()) {
+                        $uber['successful'] = false;
+                    }
+                    $uber['reinstalledPlanets'] = array_merge($uber['reinstalledPlanets'], $summary->getReinstalledPlanets());
+                    $uber['alreadyInstalledPlanets'] = array_merge($uber['alreadyInstalledPlanets'], $summary->getAlreadyInstalledPlanets());
+                    $uber['uninstalledPlanets'] = array_merge($uber['uninstalledPlanets'], $summary->getUninstalledPlanets());
+                }
+
+                $o = new ImportSummary();
+                $o->setSuccessful($uber['successful']);
+                $o->setReinstalledPlanets($uber['reinstalledPlanets']);
+                $o->setAlreadyInstalledPlanets($uber['alreadyInstalledPlanets']);
+                $o->setUninstalledPlanets($uber['uninstalledPlanets']);
+                return $o;
+
+            } elseif (is_string($planets)) {
+                $planetName = $planets;
+                foreach ($this->importers as $importer) {
+                    $importer->forceImport($this->_forceImport);
+                    if (true === $importer->canImport($planetName, $universe)) {
+                        $summary = $importer->import($planetsDir, $planetName, $universe);
+                        return $summary;
+                    }
+                }
+                $summary = ImportSummary::create();
+                $summary->setSuccessful(false);
+                $summary->setUninstalledPlanets([$planetName]);
+                return $summary;
+            }
+        }
+
+
+        public function listPlanets($universe = null)
+        {
+            $printer = $this->getPrinter();
+            foreach ($this->importers as $importer) {
+
+                $planets = $importer->getAvailablePlanets($universe);
+                if (count($planets) > 0) {
+                    echo $printer->info("Importer " . $importer->getName() . ":");
+                    foreach ($planets as $info) {
+                        echo "- " . $info[0] . " (" . $info[1] . ")" . PHP_EOL;
+                    }
+                }
+            }
+        }
+
+        /**
+         * @param null $universe
+         * @return array, array of planets.
+         * If $sortByUniverse=false, then an array of items is returned.
+         *      Each item has two entries:
+         *      - 0: planetName
+         *      - 1: universe
+         * If $sortByUniverse=true, then an array of universe => planetNames is returned
+         *
+         *
+         *
+         *
+         */
+        public function getAllPlanets($universe = null, $sortByUniverse = false)
+        {
+            $planets = [];
+            foreach ($this->importers as $importer) {
+                $planets = array_merge($planets, $importer->getAvailablePlanets($universe));
+            }
+            if (false === $sortByUniverse) {
+                return $planets;
+            } else {
+                $ret = [];
+                foreach ($planets as $item) {
+                    if (!array_key_exists($item[1], $ret)) {
+                        $ret[$item[1]] = [];
+                    }
+                    if (!in_array($item[0], $ret[$item[1]], true)) {
+                        $ret[$item[1]][] = $item[0];
+                    }
+                }
+                return $ret;
+            }
+        }
+
+
+        public function mergeSummaries(array $summaries)
+        {
+            $isSuccessful = true;
+
+            $alreadyInstalledPlanets = [];
+            $reinstalledPlanets = [];
+            $uninstalledPlanets = [];
+
+            foreach ($summaries as $summary) {
+                /**
+                 * @var ImportSummaryInterface $summary
+                 */
+                if (false === $summary->isSuccessful()) {
+                    $isSuccessful = false;
+                }
+
+                $alreadyInstalledPlanets = array_merge($alreadyInstalledPlanets, $summary->getAlreadyInstalledPlanets());
+                $reinstalledPlanets = array_merge($reinstalledPlanets, $summary->getReinstalledPlanets());
+                $uninstalledPlanets = array_merge($uninstalledPlanets, $summary->getUninstalledPlanets());
+
+            }
+
+
+            $summar = ImportSummary::create();
+            $summar->setSuccessful($isSuccessful);
+            $summar->setAlreadyInstalledPlanets($alreadyInstalledPlanets);
+            $summar->setReinstalledPlanets($reinstalledPlanets);
+            $summar->setUninstalledPlanets($uninstalledPlanets);
+            return $summar;
+        }
+
+        //--------------------------------------------
+        //
+        //--------------------------------------------
+        /**
+         * @return ProgramPrinterInterface
+         */
+        private function getPrinter()
+        {
+            if (null === $this->printer) {
+                $this->printer = new ProgramPrinter();
+            }
+            return $this->printer;
+        }
+    }
+}
+
+
+namespace ProgramPrinter {
+
+
+    interface ProgramPrinterInterface
+    {
+        public function error($msg, $br = true);
+
+        public function success($msg, $br = true);
+
+        public function warn($msg, $br = true);
+
+        public function info($msg, $br = true);
+
+        public function help();
+
+        public function say($msg, $br = true);
+    }
+
+    interface ProgramPrinterAwareInterface
+    {
+        public function setProgramPrinter(ProgramPrinterInterface $printer);
+    }
+
+
+    class ProgramPrinter implements ProgramPrinterInterface
+    {
+        public static function create()
+        {
+            return new static();
+        }
+
+
+        public function error($msg, $br = true)
+        {
+            echo "\e[31m$msg\e[0m";
+            if (true === $br) {
+                echo PHP_EOL;
+            }
+        }
+
+        public function success($msg, $br = true)
+        {
+            echo "\e[32m$msg\e[0m";
+            if (true === $br) {
+                echo PHP_EOL;
+            }
+        }
+
+        public function info($msg, $br = true)
+        {
+            echo "\e[34m$msg\e[0m";
+            if (true === $br) {
+                echo PHP_EOL;
+            }
+        }
+
+        public function warn($msg, $br = true)
+        {
+            // 1;31: light red
+            // 1;33: yellow
+            echo "\e[31m$msg\e[0m";
+            if (true === $br) {
+                echo PHP_EOL;
+            }
+        }
+
+        public function help()
+        {
+            echo <<<HELP
+\e[34m        
+Usage
+-------
+uni import {planetName} {universe}?                 # import one planet and dependencies, skip already existing planet(s)/dependencies
+uni import -f {planetName} {universe}?              # import one planet and dependencies, replace already existing planet(s)/dependencies
+uni import -f _all_ {universe}?                      # import all planets and dependencies, replace already existing planet(s)/dependencies
+uni list {universe}?                                # list available planets
+uni setlocaluniverse {localUniversePath}            # set the local universe path
+uni getlocaluniverse                                # get the local universe path
+uni tosymlink                                       # converts the planets of the application to symlinks (to the local universe)
+uni todir                                           # converts the planets of the application to directories (copied from the local universe)
+uni clean                                           # removes the .git, .gitignore, .idea and .DS_Store files at the top level of your application's planet directories
+
+For instance: 
+    uni import Bat
+    uni import Bat ling
+    uni import -f Bat
+    uni import -f _all_
+    uni import -f _all_ ling    
+    uni list
+    uni list ling
+    uni setlocaluniverse /myphp/universe
+    uni getlocaluniverse
+    uni tosymlink
+    uni todir
+    uni clean
+    
+    
+Options
+-------------
+-f: force overwriting of existing planets and dependencies. If not set, the Importer will skip existing planets/dependencies.    
+    
+
+\e[0m
+HELP;
+        }
+
+
+        public function say($msg, $br = true)
+        {
+            echo $msg;
+            if (true === $br) {
+                echo PHP_EOL;
+            }
+        }
+
+    }
+}
+
+
+namespace UniverseNaiveImporter\ImportSummary {
+
+
+    interface ImportSummaryInterface
+    {
+
+        public function isSuccessful();
+
+        /**
+         * Planets which have actually been replaced (overwritten)
+         */
+        public function getReinstalledPlanets();
+
+        public function getAlreadyInstalledPlanets();
+
+
+        public function getUninstalledPlanets();
+    }
+
+
+    class ImportSummary implements ImportSummaryInterface
+    {
+        private $successful;
+        private $reinstalledPlanets;
+        private $alreadyInstalledPlanets;
+        private $uninstalledPlanets;
+
+
+        public function __construct()
+        {
+            $this->reinstalledPlanets = [];
+            $this->uninstalledPlanets = [];
+            $this->alreadyInstalledPlanets = [];
+            $this->successful = false;
+        }
+
+        public static function create()
+        {
+            return new static();
+        }
+
+
+        public function isSuccessful()
+        {
+            return $this->successful;
+        }
+
+        /**
+         * Planets which have actually been replaced (overwritten)
+         */
+        public function getReinstalledPlanets()
+        {
+            return $this->reinstalledPlanets;
+        }
+
+
+        public function getUninstalledPlanets()
+        {
+            return $this->uninstalledPlanets;
+        }
+
+        public function getAlreadyInstalledPlanets()
+        {
+            return $this->alreadyInstalledPlanets;
+        }
+
+
+        //--------------------------------------------
+        //
+        //--------------------------------------------
+        public function setSuccessful($successful)
+        {
+            $this->successful = $successful;
+            return $this;
+        }
+
+        public function setReinstalledPlanets(array $reinstalledPlanets)
+        {
+            $this->reinstalledPlanets = $reinstalledPlanets;
+            return $this;
+        }
+
+        public function setUninstalledPlanets(array $uninstalledPlanets)
+        {
+            $this->uninstalledPlanets = $uninstalledPlanets;
+            return $this;
+        }
+
+        public function setAlreadyInstalledPlanets(array $alreadyInstalledPlanets)
+        {
+            $this->alreadyInstalledPlanets = $alreadyInstalledPlanets;
+            return $this;
+        }
+
+        //--------------------------------------------
+        //
+        //--------------------------------------------
+        public function addAlreadyInstalledPlanet($planet)
+        {
+            $this->alreadyInstalledPlanets[] = $planet;
+            return $this;
+        }
+
+        public function addUninstalledPlanet($planet)
+        {
+            $this->uninstalledPlanets[] = $planet;
+            return $this;
+        }
+
+        public function addReinstalledPlanet($planet)
+        {
+            $this->reinstalledPlanets[] = $planet;
+            return $this;
+        }
+
+
+    }
+}
+
+
+namespace UniverseNaiveImporter\Exception {
+
+
+    class UniverseNaiveImporterException extends \Exception
+    {
+
+    }
+}
+
+
+namespace UniverseNaiveImporter\Importer {
+
+
+    use ProgramPrinter\ProgramPrinterAwareInterface;
+    use ProgramPrinter\ProgramPrinterInterface;
+    use UniverseNaiveImporter\ImportSummary\ImportSummaryInterface;
+
+    interface UniverseImporterInterface
+    {
+
+        public function canImport($planetName, $universe = null);
+
+        /**
+         * See UniverseNaiveImporter.forceImport documentation
+         */
+        public function forceImport($forceImport);
+
+        /**
+         * Import the given planet(s) to the planets directory.
+         * $planets can be a string or an array
+         *
+         * It overwrites existing planets if forceImport option is set to true
+         *
+         * @return ImportSummaryInterface
+         */
+        public function import($planetsDir, $planets);
+
+        public function getName();
+
+        /**
+         * @return array of items.
+         * Each item is an array with two entries:
+         *      - 0: the planet name
+         *      - 1: the universe name
+         */
+        public function getAvailablePlanets($universe = null);
+    }
+
+
+    use UniverseNaiveImporter\UniverseNaiveImporter;
+
+    interface UniverseNaiveImporterAwareImporterInterface
+    {
+
+        public function setUniverseNaiveImporter(UniverseNaiveImporter $uni);
+    }
+
+
+    use Bat\FileSystemTool;
+    use UniverseNaiveImporter\ImportSummary\ImportSummary;
+
+
+    class LingUniverseImporter implements UniverseImporterInterface, UniverseNaiveImporterAwareImporterInterface
+    {
+
+        private static $dependencyMap = [
+            "AdminTable" => ["QuickPdo"],
+            "ApplicationLog" => ["Bat"],
+            "ArrayExport" => ["ArrayToString"],
+            "ArrayStore" => ["ArrayExport", "Bat"],
+            "ArrayToString" => [],
+            "ArrayToTable" => ["Bat"],
+            "AssetLoader" => [],
+            "AssetsList" => ["Bat"],
+            "BabyDash" => ["IndentedLines"],
+            "BabyYaml" => ["Bat"],
+            "Bat" => ["CopyDir", "Tiphaine"],
+            "Bate" => ["Bat"],
+            "Beauty" => ["DirScanner"],
+            "BullSheet" => ["Bat", "DirScanner", "QuickPdo"],
+            "BumbleBee" => [],
+            "Colis" => ["Bat", "YouTubeUtils", "Tim", "UploaderHandler"],
+            "CommandLineManiac" => [],
+            "ConventionGuy" => [],
+            "CopyDir" => [],
+            "Csv" => [],
+            "DirScanner" => ["Bat"],
+            "DirTransformer" => ["Bat"],
+            "Dreamer" => [],
+            "Escaper" => ["Bat"],
+            "Explorer" => [],
+            "Ffmpeg" => [],
+            "FileCleaner" => [],
+            "FileCreator" => [],
+            "GetFileSize" => [],
+            "Here" => [],
+            "HtmlTemplate" => [],
+            "Icons" => [],
+            "IndentedLines" => ["Bat", "Bate", "Quoter"],
+            "Installer" => ["Bat"],
+            "InstantLog" => ["Bat"],
+            "JAjaxLoader" => [],
+            "JChronometer" => [],
+            "JCookie" => [],
+            "JDragSlider" => [],
+            "JFullScreen" => [],
+            "JGoodies" => [],
+            "JImageRotator" => [],
+            "JInfiniteSlider" => [],
+            "JItemSlider" => [],
+            "JQuery" => [],
+            "JVideoPlayer" => [],
+            "JqueryUrlWithDropZone" => ["Jquery"],
+            "Kamille" => [],
+            "KamilleWidgets" => ["Kamille"],
+            "Linker" => [],
+            "LogSlicer" => ["Bat"],
+            "Lys" => [],
+            "Meredith" => ["Bat", "QuickPdo", "Tim", "StringFormatter", "SuspiciousException"],
+            "MikeMagicTools" => [],
+            "MySimpleXmlElement" => [],
+            "MysqlTabular" => [],
+            "NotationFan" => [],
+            "Observer" => [],
+            "Ornella" => [],
+            "Pea" => [],
+            "PermsHiker" => ["Bat", "DirScanner"],
+            "PhpBeast" => ["ArrayToTable"],
+            "PhpTemplate" => [],
+            "Privilege" => [],
+            "PublicException" => [],
+            "QuickForm" => ["Bat", "QuickPdo"],
+            "QuickLog" => ["Bat"],
+            "QuickPdo" => [],
+            "Quoter" => ["Bat", "WrappedString", "Escaper"],
+            "ReflectionRepresentation" => ["VariableToString"],
+            "RssUtil" => ["MySimpleXmlElement"],
+            "ScreenDebug" => [],
+            "SecureImageUploader" => ["Bat", "ThumbnailTools"],
+            "SelectChain" => ["Tim"],
+            "SequenceMatcher" => [],
+            "SitemapBuilderBox" => ["Bat"],
+            "SitemapSlicer" => ["Bat", "SitemapBuilderBox"],
+            "StringFormatter" => ["ArrayToString", "VariableToString"],
+            "SuspiciousException" => [],
+            "SvgGridGenerator" => [],
+            "TheAnarchist" => [],
+            "TheBar" => [],
+            "TheScientist" => [],
+            "ThumbnailTools" => ["Bat"],
+            "Tim" => ["Jquery"],
+            "TimeFileUtil" => [],
+            "Tiphaine" => [],
+            "TokenFun" => ["Bat", "DirScanner"],
+            "Tokens" => [],
+            "TreeListHelper" => ["Bat"],
+            "Umail" => ["DirScanner"],
+            "UniqueNameGenerator" => ["Bat"],
+            "Updf" => [], // requires https://github.com/tecnickcom/tcpdf
+            "Uploader" => [],
+            "UploaderHandler" => [],
+            "UrlFriendlyListHelper" => ["Bat", "Jquery", "QuickPdo"],
+            "VSwitch" => [],
+            "VariableToString" => ["ArrayToString", "ReflectionRepresentation"],
+            "VideoSubtitles" => [],
+            "WrappedString" => ["Escaper"],
+            "YouTubeUtils" => [],
+            "Zoli" => [],
+        ];
+
+
+        private $_forceImport;
+
+        public function __construct()
+        {
+            $this->_forceImport = false;
+        }
+
+
+        public static function create()
+        {
+            return new static();
+        }
+
+
+        public function getName()
+        {
+            return "LingUniverseImporter";
+        }
+
+        public function getAvailablePlanets($universe = null)
+        {
+
+            $ret = [];
+            if (null === $universe || "ling" === $universe) {
+                $planets = array_keys(self::$dependencyMap);
+                foreach ($planets as $planet) {
+                    $ret[] = [$planet, "ling"];
+                }
+            }
+            return $ret;
+        }
+
+
+        public function forceImport($forceImport)
+        {
+            $this->_forceImport = $forceImport;
+            return $this;
+        }
+
+
+        public function canImport($planetName, $universe = null)
+        {
+            if (null === $universe || 'ling' == $universe) {
+                return array_key_exists($planetName, self::$dependencyMap);
+            } else {
+                return false;
+            }
+        }
+
+        public function import($planetsDir, $planets)
+        {
+            $success = false;
+            $summary = ImportSummary::create();
+            if (is_dir($planetsDir)) {
+                $success = true;
+
+
+                $tree = [];
+                $this->collectDependencyTree($planets, $tree);
+                $tree = array_unique($tree);
+                foreach ($tree as $planet) {
+                    $output = [];
+                    $returnVar = 0;
+                    if (file_exists($planetsDir . "/" . $planet)) {
+                        if (true === $this->_forceImport) {
+                            FileSystemTool::remove($planetsDir . "/" . $planet);
+                        } else {
+                            $summary->addAlreadyInstalledPlanet($planet);
+                            continue;
+                        }
+                    }
+
+                    $cmd = 'cd "' . $planetsDir . '"; git clone https://github.com/lingtalfi/' . $planet . '.git';
+                    exec($cmd, $output, $returnVar);
+                    if (0 === $returnVar) {
+                        $summary->addReinstalledPlanet($planet);
+                    } else {
+                        $success = false;
+                        $summary->addUninstalledPlanet($planet);
+                    }
+                }
+            }
+            $summary->setSuccessful($success);
+            return $summary;
+        }
+
+
+        public function setUniverseNaiveImporter(UniverseNaiveImporter $uni)
+        {
+            // TODO: Implement setUniverseNaiveImporter() method.
+        }
+
+
+        //--------------------------------------------
+        //
+        //--------------------------------------------
+        private function collectDependencyTree($planets, array &$tree)
+        {
+            if (is_string($planets)) {
+                $planetName = $planets;
+                $tree[] = $planetName;
+                if (array_key_exists($planetName, self::$dependencyMap)) {
+                    $deps = self::$dependencyMap[$planetName];
+                    foreach ($deps as $dep) {
+                        if (!in_array($dep, $tree, true)) {
+                            self::collectDependencyTree($dep, $tree);
+                        }
+                    }
+                }
+            } elseif (is_array($planets)) {
+                foreach ($planets as $planetName) {
+                    $this->collectDependencyTree($planetName, $tree);
+                }
+            }
+        }
+    }
+}
+
+
+namespace Bat {
+
+
+    use CopyDir\AuthorCopyDirUtil;
+
+    class FileSystemTool
+    {
+
+        /**
+         * Removes an entry from the filesystem.
+         * The entry can be:
+         *
+         * - a link, then the link only is removed (not the target)
+         * - a file, then the file is removed
+         * - a directory, the the directory is removed recursively
+         *
+         * It is considered a success when the entry doesn't exist on the filesystem at the end,
+         * and a failure otherwise.
+         *
+         * By default, the method throws an exception in case of failure.
+         *
+         * If you set the throwEx flag to false, then this method will return true in case of success,
+         * and false in case of failure.
+         *
+         */
+        public static function remove($file, $throwEx = true)
+        {
+            if (false === is_link($file)) {
+                if (file_exists($file)) {
+                    return self::_remove($file, $throwEx);
+                } else {
+                    return true;
+                }
+            } else {
+                if (false === unlink($file)) {
+                    return self::_oops("Cannot remove link $file", $throwEx);
+                }
+                return true;
+            }
+        }
+
+        /**
+         * Copies a directory to a given location.
+         */
+        public static function copyDir($src, $target, $preservePerms = false, &$errors = [])
+        {
+            $o = AuthorCopyDirUtil::create();
+            $o->setPreservePerms($preservePerms);
+            $ret = $o->copyDir($src, $target);
+            $errors = $o->getErrors();
+            return $ret;
+        }
+
+
+
+
+        //------------------------------------------------------------------------------/
+        //
+        //------------------------------------------------------------------------------/
+        private static function _oops($m, $throwEx = true)
+        {
+            if (true === $throwEx) {
+                throw new \Exception($m);
+            }
+            return false;
+        }
+
+        private static function _remove($file, $throwEx = true)
+        {
+            if (is_dir($file) && !is_link($file)) {
+                if (is_readable($file)) {
+                    $files = new \FilesystemIterator($file,
+                        \FilesystemIterator::KEY_AS_PATHNAME |
+                        \FilesystemIterator::CURRENT_AS_FILEINFO |
+                        \FilesystemIterator::SKIP_DOTS
+                    );
+                    foreach ($files as $f) {
+                        self::_remove($f, $throwEx);
+                    }
+                    if (false === rmdir($file)) {
+                        return self::_oops("Cannot remove dir $file", $throwEx);
+                    }
+                    return true;
+                } else {
+                    return self::_oops("Cannot remove unreadable dir $file", $throwEx);
+                }
+            } else {
+                if (true === is_file($file) || true === is_link($file)) {
+                    if (false === unlink($file)) {
+                        if (true === is_link($file)) {
+                            return self::_oops("Cannot remove link $file", $throwEx);
+                        }
+                        return self::_oops("Cannot remove file $file", $throwEx);
+                    }
+                    return true;
+                }
+            }
+        }
+    }
+}
+
+
+namespace CopyDir\Exception {
+
+    class CopyDirException extends \Exception
+    {
+
+
+        public $errorArray;
+
+        public function __construct($message = "", $code = 0, \Exception $previous = null)
+        {
+            parent::__construct($message, $code, $previous);
+            $this->errorArray = [];
+        }
+
+
+    }
+}
+namespace CopyDir {
+
+    /*
+     * LingTalfi 2015-10-19
+     */
+    use CopyDir\Exception\CopyDirException;
+
+    class CopyDirUtil
+    {
+
+        /**
+         * @var bool: if true, throws an exception if anything goes wrong
+         *            if false (default), put errors in the errors array
+         */
+        private $strictMode;
+        private $errors;
+        private $followFileLinks;
+        private $followDirLinks;
+
+        /**
+         *    void      f (  str:src,  str:target,  &str:errMsg )
+         *
+         * This callback is called whenever we try to make a copy of a dir to an already existing
+         * entry which is either a file or a broken link.
+         *
+         * The default behaviour, if the callback is not defined (or do nothing) is to skip the copying of the
+         * directory and to add an error message indicating that an entry with the same name already existed.
+         *
+         * The callback has the opportunity to change this behaviour by changing the errMsg that will be produced,
+         * and/or by removing the existing entry and create a valid directory instead.
+         * Once the callback has been executed, the class will re-check whether or not a directory exist,
+         * and will use the new directory if found.
+         *
+         * If the directory has been recreated, the errMsg should be the empty string.
+         *
+         *
+         */
+        private $onDirConflict;
+
+        /**
+         * Same mechanism as onDirConflict, except that the target can be any type of file (file, symlink, dir).
+         * And also, there is no double checking that the file exists after the callback is called, the class
+         * just cares about the errMsg which can be either non empty or empty.
+         */
+        private $onFileConflict;
+        private $onFileLinkConflict;
+        private $onDirLinkConflict;
+        private $onBrokenLinkConflict;
+
+        /**
+         * void     f ( str:baseName, str:src, str:target, bool:&continue=true )
+         *
+         * This callback is triggered before directory entries are processed.
+         * It was originally designed to serve as a pre-filter (to filter out undesirable entries).
+         *
+         * If the callback sets the continue flag to false, the entry will be skip.
+         *
+         *
+         */
+        private $onCopyBefore;
+        /**
+         * void     f ( str:src, str:target )
+         *
+         * This callback is triggered:
+         * - every time a src directory is mapped to a target directory
+         * - every time a try to copy a src directory entry into its target correspondent is done
+         *
+         * This callback was originally designed to allow post chmoding of the target entries.
+         *
+         */
+        private $onCopyAfter;
+
+        public function __construct()
+        {
+            $this->strictMode = false;
+            $this->errors = [];
+            $this->followFileLinks = false;
+            $this->followDirLinks = false;
+            $this->onDirConflict = false;
+            $this->onFileConflict = false;
+            $this->onFileLinkConflict = false;
+            $this->onDirLinkConflict = false;
+            $this->onBrokenLinkConflict = false;
+            $this->onCopyBefore = false;
+            $this->onCopyAfter = false;
+        }
+
+
+        public static function create()
+        {
+            return new static();
+        }
+
+
+        /**
+         * Copies/maps src to target.
+         *
+         * @return true if no error occurred, false otherwise,
+         *              or throws an exception if an error occurs and strict mode is on (strict mode is on by default).
+         * @throws CopyDirException
+         */
+        public function copyDir($src, $target)
+        {
+            if (2 === func_num_args()) {
+                $this->errors = [];
+            }
+
+            if (is_dir($src)) {
+                if (is_readable($src)) {
+
+                    $cleanTarget = true;
+                    // case where the target is a file or a broken link (it's supposed to be either a file or not exist)
+                    if (
+                        is_file($target) ||
+                        (is_link($target) && (false === is_file($target) && false === is_dir($target)))
+                    ) {
+                        $errMsg = "Cannot create dir $target, because an entry (of type file or broken link) with the same name was already found";
+                        if (is_callable($this->onDirConflict)) {
+                            call_user_func_array($this->onDirConflict, [$src, $target, &$errMsg]);
+                        }
+                        clearstatcache(); // not sure if needed for is_dir($target) call, so in doubt...
+                        if (!is_dir($target)) {
+                            $cleanTarget = false;
+                        }
+                        if ($errMsg) {
+                            $this->error($errMsg);
+                        }
+                    }
+
+
+                    if (true === $cleanTarget) {
+
+                        $targetIsDir = true;
+                        if (!is_dir($target)) {
+                            if (false === mkdir($target, 0777, true)) {
+                                $this->error("Couldn't create the target dir: $target");
+                                $targetIsDir = false;
+                            }
+                        }
+                        if (true === $targetIsDir) {
+
+                            $this->_onCopyAfter($src, $target);
+
+
+                            if (is_writable($target)) {
+                                $files = scandir($src);
+                                foreach ($files as $baseName) {
+                                    if ('.' !== $baseName && '..' !== $baseName) {
+
+
+                                        $file = $src . '/' . $baseName;
+                                        $targetFile = $target . '/' . $baseName;
+
+
+                                        $continue = true;
+                                        if (is_callable($this->onCopyBefore)) {
+                                            call_user_func_array($this->onCopyBefore, [$baseName, $file, $targetFile, &$continue]);
+                                        }
+
+
+                                        if (true === $continue) {
+
+                                            $isProcessedAsLink = false;
+                                            if (is_link($file)) {
+                                                if (is_file($file)) {
+                                                    if (false === $this->followFileLinks) {
+                                                        $isProcessedAsLink = true;
+                                                        $this->copyFileLink($file, $targetFile);
+                                                    }
+                                                } elseif (is_dir($file)) {
+                                                    if (false === $this->followDirLinks) {
+                                                        $isProcessedAsLink = true;
+                                                        $this->copyDirLink($file, $targetFile);
+                                                    }
+                                                } else {
+                                                    // broken link
+                                                    $isProcessedAsLink = true;
+                                                    $this->copyBrokenLink($file, $targetFile);
+                                                }
+                                            }
+
+
+                                            if (false === $isProcessedAsLink) {
+                                                if (is_file($file)) {
+                                                    $this->copyFile($file, $targetFile);
+                                                } elseif (is_dir($file)) {
+                                                    $this->copyDir($file, $targetFile, true);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            } else {
+                                $this->error("Target dir must be writable: $target");
+                            }
+                        }
+                    }
+                } else {
+                    $this->error("src is not readable: $src");
+                }
+            } else {
+                $this->error("src is not a dir: $src");
+            }
+
+
+            // handling errors
+            if (true === $this->strictMode && $this->errors) {
+                $m = 'The following errors have occurred: ' . implode(', ', $this->errors);
+                $e = new CopyDirException($m);
+                $e->errorArray = $this->errors;
+                throw $e;
+            }
+            return (0 === count($this->errors));
+        }
+
+
+
+        //------------------------------------------------------------------------------/
+        //
+        //------------------------------------------------------------------------------/
+        public function setStrictMode($strictMode)
+        {
+            $this->strictMode = (bool)$strictMode;
+            return $this;
+        }
+
+        public function getErrors()
+        {
+            return $this->errors;
+        }
+
+        public function setFollowDirLinks($followDirLinks)
+        {
+            $this->followDirLinks = (bool)$followDirLinks;
+            return $this;
+        }
+
+        public function setFollowFileLinks($followFileLinks)
+        {
+            $this->followFileLinks = (bool)$followFileLinks;
+            return $this;
+        }
+
+        public function setOnBrokenLinkConflict($onBrokenLinkConflict)
+        {
+            $this->onBrokenLinkConflict = $onBrokenLinkConflict;
+            return $this;
+        }
+
+        public function setOnCopyAfter($onCopyAfter)
+        {
+            $this->onCopyAfter = $onCopyAfter;
+            return $this;
+        }
+
+        public function setOnCopyBefore($onCopyBefore)
+        {
+            $this->onCopyBefore = $onCopyBefore;
+            return $this;
+        }
+
+        public function setOnDirConflict($onDirConflict)
+        {
+            $this->onDirConflict = $onDirConflict;
+            return $this;
+        }
+
+        public function setOnDirLinkConflict($onDirLinkConflict)
+        {
+            $this->onDirLinkConflict = $onDirLinkConflict;
+            return $this;
+        }
+
+        public function setOnFileConflict($onFileConflict)
+        {
+            $this->onFileConflict = $onFileConflict;
+            return $this;
+        }
+
+        public function setOnFileLinkConflict($onFileLinkConflict)
+        {
+            $this->onFileLinkConflict = $onFileLinkConflict;
+            return $this;
+        }
+
+
+
+        //------------------------------------------------------------------------------/
+        //
+        //------------------------------------------------------------------------------/
+        private function copyFile($src, $target)
+        {
+            $this->copyThing($src, $target, "file", "onFileConflict");
+        }
+
+        private function copyFileLink($src, $target)
+        {
+            $this->copyThing($src, $target, "file link", "onFileLinkConflict");
+        }
+
+        private function copyDirLink($src, $target)
+        {
+            $this->copyThing($src, $target, "dir link", "onDirLinkConflict");
+        }
+
+        private function copyBrokenLink($src, $target)
+        {
+            $this->copyThing($src, $target, "broken link", "onBrokenLinkConflict");
+        }
+
+
+        private function copyThing($src, $target, $type, $callback)
+        {
+            if (!file_exists($target) && !is_link($target)) {
+                switch ($type) {
+                    case 'dir link':
+                    case 'file link':
+                    case 'broken link':
+                        $link = readlink($src);
+                        if (false === symlink($link, $target)) {
+                            $this->error("Could not copy $type $src to $target");
+                        }
+                        break;
+                    default:
+                        if (false === copy($src, $target)) {
+                            $this->error("Could not copy $type $src to $target");
+                        }
+                        break;
+                }
+            } else {
+                $errMsg = "Couldn't create $type $target, because an entry with the same name already existed";
+                $this->onConflict($src, $target, $errMsg, $callback, $type);
+                if ($errMsg) {
+                    $this->error($errMsg);
+                }
+            }
+            $this->_onCopyAfter($src, $target);
+        }
+
+
+        //------------------------------------------------------------------------------/
+        //
+        //------------------------------------------------------------------------------/
+        protected function onConflict($src, $target, &$errMsg, $callback, $type)
+        {
+            if (is_callable($this->$callback)) {
+                call_user_func_array($this->$callback, [$src, $target, &$errMsg]);
+            }
+        }
+
+
+        protected function _onCopyAfter($src, $target)
+        {
+            if (is_callable($this->onCopyAfter)) {
+                call_user_func($this->onCopyAfter, $src, $target);
+            }
+        }
+
+        protected function error($m)
+        {
+            $this->errors[] = $m;
+        }
+    }
+
+    class AuthorCopyDirUtil extends CopyDirUtil
+    {
+
+        private $applyPerms;
+        private $applyOwner;
+        private $ignoreConflictErrors;
+
+        public function __construct()
+        {
+            parent::__construct();
+            $this->applyOwner = false;
+            $this->applyPerms = false;
+            $this->ignoreConflictErrors = true;
+        }
+
+        public function setPreservePerms($bool)
+        {
+            $bool = (bool)$bool;
+            $this->applyOwner = $bool;
+            $this->applyPerms = $bool;
+            return $this;
+        }
+
+        public function setIgnoreConflictErrors($ignoreConflictErrors)
+        {
+            $this->ignoreConflictErrors = (bool)$ignoreConflictErrors;
+            return $this;
+        }
+
+
+
+
+
+
+        //------------------------------------------------------------------------------/
+        //
+        //------------------------------------------------------------------------------/
+        protected function onConflict($src, $target, &$errMsg, $callback, $type)
+        {
+            if ('onFileConflict' === $callback) {
+                if (is_file($target)) {
+                    copy($src, $target);
+                    $errMsg = null;
+                }
+            }
+            if (true === $this->ignoreConflictErrors) {
+                $errMsg = null;
+            }
+            parent::onConflict($src, $target, $errMsg, $callback, $type);
+        }
+
+        protected function _onCopyAfter($src, $target)
+        {
+            if (is_link($src) && false === is_file($src) && false === is_dir($src)) {
+                // broken link case, we don't need to chmod it
+            } else {
+                if (true === $this->applyPerms) {
+                    $octal = substr(sprintf('%o', fileperms($src)), -4);
+                    if (false === chmod($target, octdec($octal))) {
+                        $this->error("Cannot chmod $target with perms $octal");
+                    }
+                }
+                if (true === $this->applyOwner) {
+                    if (false !== ($owner = fileowner($src))) {
+                        if (false !== ($ownerGroup = filegroup($src))) {
+                            if (false === chown($target, $owner)) {
+                                if (true === extension_loaded('posix')) {
+                                    $owner = posix_getpwuid($owner)['name'];
+                                }
+                                $this->error("Could not chown for $target with owner=$owner");
+                            }
+                            if (false === chgrp($target, $ownerGroup)) {
+                                if (true === extension_loaded('posix')) {
+                                    $ownerGroup = posix_getgrgid($ownerGroup)['name'];
+                                }
+                                $this->error("Could not chgrp for $target with owner=$ownerGroup");
+                            }
+
+                        } else {
+                            $this->error("Couldn't access group owner information for $src");
+                        }
+                    } else {
+                        $this->error("Couldn't access file owner information for $src");
+                    }
+                }
+            }
+            parent::_onCopyAfter($src, $target);
+        }
+
+
+    }
+
+
+}
+
+
+namespace LocalUniverse {
+    /**
+     * This class allows to get/set the value of the local universe path.
+     * It uses a simple text file as the storage.
+     * The text file is created next to the current script location (which is presumed to be next to the uni script.
+     */
+    class LocalUniverse
+    {
+
+
+        public static function create()
+        {
+            return new static();
+        }
+
+        public function setLocalUniversePath($path)
+        {
+            if (false !== file_put_contents($this->getStorageFile(), $path)) {
+                return true;
+            }
+            return false;
+        }
+
+
+        public function getLocalUniversePath()
+        {
+            $file = $this->getStorageFile();
+            if (file_exists($file)) {
+                return trim(file_get_contents($file));
+            }
+            return false;
+        }
+
+        //--------------------------------------------
+        //
+        //--------------------------------------------
+        private function getStorageFile()
+        {
+            return __DIR__ . "/local-universe-path.txt";
+        }
+    }
+}
+
+
+namespace Tools {
+
+
+    use Bat\FileSystemTool;
+    use ProgramPrinter\ProgramPrinter;
+    use ProgramPrinter\ProgramPrinterInterface;
+
+    class SymlinkDirTool
+    {
+        private $printer;
+
+        public static function create()
+        {
+            return new static();
+        }
+
+
+        public function setPrinter(ProgramPrinterInterface $printer)
+        {
+            $this->printer = $printer;
+            return $this;
+        }
+
+
+        public function convert($mode, $targetPlanetsDir, $localUniversePlanetsDir)
+        {
+            $printer = $this->getPrinter();
+            if (file_exists($targetPlanetsDir)) {
+                if (file_exists($localUniversePlanetsDir)) {
+
+
+                    $planets = $this->getPlanetNames($targetPlanetsDir);
+
+
+                    foreach ($planets as $planet) {
+
+
+                        $oldFile = $targetPlanetsDir . "/$planet";
+                        $sourcePlanetDir = $localUniversePlanetsDir . "/$planet";
+                        if (is_dir($sourcePlanetDir)) {
+
+
+                            // remove old files (yes, it's risky)
+                            if (file_exists($oldFile)) {
+                                if (is_link($oldFile)) {
+                                    unlink($oldFile);
+                                } else {
+                                    FileSystemTool::remove($oldFile);
+                                }
+                            }
+
+
+                            if ('symlink' === $mode) {
+                                symlink($sourcePlanetDir, $oldFile);
+                            } else { // dir
+                                FileSystemTool::copyDir($sourcePlanetDir, $oldFile);
+                            }
+                        } else {
+                            $printer->warn("local universe's planet directory does not exist: $sourcePlanetDir. No action was taken for that planet");
+                        }
+                    }
+                } else {
+                    $printer->error("local universe's planets directory does not exist: $localUniversePlanetsDir");
+                }
+
+            } else {
+                $printer->error("target planets directory does not exist: $targetPlanetsDir");
+            }
+        }
+
+
+        //--------------------------------------------
+        //
+        //--------------------------------------------
+        private function getPlanetNames($planetsDir)
+        {
+
+            $files = scandir($planetsDir);
+            return array_filter($files, function ($v) {
+                if (false !== strpos($v, '.')) {
+                    return false;
+                }
+                return true;
+            });
+        }
+
+        private function getPrinter()
+        {
+            if (null === $this->printer) {
+                $this->printer = ProgramPrinter::create();
+            }
+            return $this->printer;
+        }
+    }
+
+    class CleanerTool
+    {
+        private $printer;
+        private $filesToBeCleaned;
+        private $dirsToBeCleaned;
+
+
+        public function __construct()
+        {
+            $this->filesToBeCleaned = [
+                '.gitignore',
+                '.DS_Store',
+            ];
+            $this->dirsToBeCleaned = [
+                '.idea',
+                '.git',
+            ];
+        }
+
+        public static function create()
+        {
+            return new static();
+        }
+
+        public function setFilesToBeCleaned($filesToBeCleaned)
+        {
+            $this->filesToBeCleaned = $filesToBeCleaned;
+            return $this;
+        }
+
+        public function setDirsToBeCleaned($dirsToBeCleaned)
+        {
+            $this->dirsToBeCleaned = $dirsToBeCleaned;
+            return $this;
+        }
+
+
+        public function setPrinter(ProgramPrinterInterface $printer)
+        {
+            $this->printer = $printer;
+            return $this;
+        }
+
+
+        public function clean($targetPlanetsDir)
+        {
+            $printer = $this->getPrinter();
+            if (file_exists($targetPlanetsDir)) {
+
+                $planets = $this->getPlanetNames($targetPlanetsDir);
+                foreach ($planets as $planet) {
+
+                    $d = $targetPlanetsDir . "/" . $planet;
+
+                    foreach ($this->filesToBeCleaned as $_f) {
+                        $f = $d . "/$_f";
+                        if (file_exists($f)) {
+                            unlink($f);
+                        }
+                    }
+
+                    foreach ($this->dirsToBeCleaned as $_f) {
+                        $f = $d . "/$_f";
+                        if (is_dir($f)) {
+                            FileSystemTool::remove($f);
+                        }
+                    }
+                }
+            } else {
+                $printer->error("target planets directory does not exist: $targetPlanetsDir");
+            }
+        }
+
+
+        //--------------------------------------------
+        //
+        //--------------------------------------------
+        private function getPlanetNames($planetsDir)
+        {
+
+            $files = scandir($planetsDir);
+            return array_filter($files, function ($v) {
+                if (false !== strpos($v, '.')) {
+                    return false;
+                }
+                return true;
+            });
+        }
+
+        private function getPrinter()
+        {
+            if (null === $this->printer) {
+                $this->printer = ProgramPrinter::create();
+            }
+            return $this->printer;
+        }
+    }
+}
+
+
+namespace {
+
+
+    use LocalUniverse\LocalUniverse;
+    use ProgramPrinter\ProgramPrinter;
+    use Tools\CleanerTool;
+    use Tools\SymlinkDirTool;
+    use Tools\UngitTool;
+    use UniverseNaiveImporter\Importer\LingUniverseImporter;
+    use UniverseNaiveImporter\UniverseNaiveImporter;
+
+
+    if (!function_exists('a')) {
+        function a()
+        {
+            foreach (func_get_args() as $arg) {
+                ob_start();
+                var_dump($arg);
+                $output = ob_get_clean();
+                if ('1' !== ini_get('xdebug.default_enable')) {
+                    $output = preg_replace("!\]\=\>\n(\s+)!m", "] => ", $output);
+                }
+                if ('cli' === PHP_SAPI) {
+                    echo $output;
+                } else {
+                    echo '<pre>' . $output . '</pre>';
+                }
+            }
+        }
+
+        function az()
+        {
+            call_user_func_array('a', func_get_args());
+            exit;
+        }
+    }
+
+    $printer = ProgramPrinter::create();
+    $planetsRelativePath = 'class-planets';
+    $localUniversePlanetsRelativePath = 'planets';
+
+    $force = false;
+    if (array_key_exists(2, $argv) && '-f' === $argv[2]) {
+        $force = true;
+        unset($argv[2]);
+        $argv = array_merge($argv);
+    }
+
+
+    //--------------------------------------------
+    // IMPORT
+    //--------------------------------------------
+    if (array_key_exists(1, $argv) && 'import' === $argv[1] && array_key_exists(2, $argv)) {
+
+
+        $universe = null;
+        $planetName = $argv[2];
+
+        if (array_key_exists(3, $argv)) {
+            $universe = $argv[3];
+        }
+
+
+        $appDir = getcwd();
+        $planetsDir = $appDir . "/" . $planetsRelativePath;
+
+        if (false === file_exists($planetsDir)) {
+            @mkdir($planetsDir, 0777, true);
+        }
+
+
+        if (file_exists($planetsDir)) {
+
+            $summary = null;
+            $uni = UniverseNaiveImporter::create()
+                ->setProgramPrinter($printer)
+                ->forceImport($force)
+                ->setAppDir($appDir)
+                ->addImporter(LingUniverseImporter::create())
+                ->setPlanetsRelativePath($planetsRelativePath);
+
+
+            if ('_all_' === $planetName) {
+                $allPlanets = $uni->getAllPlanets($universe, true);
+
+                $summaries = [];
+                foreach ($allPlanets as $univ => $planets) {
+                    $summaries[] = $uni->import($planets, $univ);
+                }
+                $summary = $uni->mergeSummaries($summaries);
+
+            } else {
+                $summary = $uni->import($planetName, $universe);
+            }
+
+
+            //--------------------------------------------
+            // PRINT SUMMARY
+            //--------------------------------------------
+            $successfull = $summary->isSuccessful();
+            if (true === $successfull) {
+                $printer->success("The import was successful");
+            } else {
+                $printer->error("The import was not successful");
+            }
+            $alreadyInstalled = $summary->getAlreadyInstalledPlanets();
+            $reinstalled = $summary->getReinstalledPlanets();
+            $uninstalled = $summary->getUninstalledPlanets();
+
+
+            $cAlready = count($alreadyInstalled);
+            $printer->say("$cAlready planets were already installed", false);
+            if ($cAlready > 0) {
+                $printer->say(": " . implode(", ", $alreadyInstalled));
+            } else {
+                $printer->say("");
+            }
+
+            $cReinstalled = count($reinstalled);
+            $printer->say("$cReinstalled planets have been re-installed", false);
+            if ($cReinstalled > 0) {
+                $printer->say(": " . implode(", ", $reinstalled));
+            } else {
+                $printer->say("");
+            }
+
+            $cUninstalled = count($uninstalled);
+            $printer->say("$cUninstalled planets couldn't be installed", false);
+            if ($cUninstalled > 0) {
+                $printer->say(": " . implode(", ", $uninstalled));
+            } else {
+                $printer->say("");
+            }
+
+
+            $bigbangString = <<<'BIGBANG'
+<?php
+
+
+
+//------------------------------------------------------------------------------/
+// THIS IS BIG BANG SCRIPT, from whence the universe can be used
+//------------------------------------------------------------------------------/
+use BumbleBee\Autoload\ButineurAutoloader;
+
+
+require_once __DIR__ . '/BumbleBee/Autoload/BeeAutoloader.php';
+require_once __DIR__ . '/BumbleBee/Autoload/ButineurAutoloader.php';
+
+
+
+if (!isset($__butineurStart)) {
+    $__butineurStart = true;
+}
+
+ButineurAutoloader::getInst()
+    ->addLocation(__DIR__);
+// ->addLocation(__DIR__ . "/myclasses") // we could use multiple directories if needed
+//
+//
+if (true === $__butineurStart) {
+    ButineurAutoloader::getInst()->start();
+}
+
+//------------------------------------------------------------------------------/
+// BONUS FUNCTIONS, SO HANDFUL... (a huge time saver in the end)
+//------------------------------------------------------------------------------/
+if (!function_exists('a')) {
+    function a()
+    {
+        foreach (func_get_args() as $arg) {
+            ob_start();
+            var_dump($arg);
+            $output = ob_get_clean();
+            if ('1' !== ini_get('xdebug.default_enable')) {
+                $output = preg_replace("!\]\=\>\n(\s+)!m", "] => ", $output);
+            }
+            if ('cli' === PHP_SAPI) {
+                echo $output;
+            }
+            else {
+                echo '<pre>' . $output . '</pre>';
+            }
+        }
+    }
+    function az()
+    {
+        call_user_func_array('a', func_get_args());
+        exit;
+    }
+}
+BIGBANG;
+
+
+            $bigbangFile = $planetsDir . "/bigbang.php";
+
+
+            if (file_exists($bigbangFile) && false === $force) {
+                $printer->success('bigbang script is already in place');
+            } else {
+                if (false !== file_put_contents($bigbangFile, $bigbangString)) {
+                    $printer->success('bigbang script has been created successfully');
+                } else {
+                    $printer->error("bigbang script couldn't be created");
+                }
+            }
+
+
+        } else {
+            $printer->error("Cannot create the planets directory: $planetsDir");
+        }
+
+    }
+    //--------------------------------------------
+    // LIST
+    //--------------------------------------------
+    elseif (array_key_exists(1, $argv) && 'list' === $argv[1]) {
+        $universe = null;
+        if (array_key_exists(2, $argv)) {
+            $universe = $argv[2];
+        }
+        UniverseNaiveImporter::create()
+            ->setProgramPrinter($printer)
+            ->addImporter(LingUniverseImporter::create())
+            ->listPlanets($universe);
+
+    }
+    //--------------------------------------------
+    // SET/GET LOCAL UNIVERSE
+    //--------------------------------------------
+    elseif (array_key_exists(1, $argv) && 'setlocaluniverse' === $argv[1] && array_key_exists(2, $argv)) {
+        $path = $argv[2];
+        if (true === LocalUniverse::create()->setLocalUniversePath($path)) {
+            $printer->success("local path successfully set");
+        } else {
+            $printer->error("local path couldn't be set");
+        }
+
+    } elseif (array_key_exists(1, $argv) && 'getlocaluniverse' === $argv[1]) {
+        if (false !== ($path = LocalUniverse::create()->getLocalUniversePath())) {
+            $printer->say($path);
+        } else {
+            $printer->error("local path couldn't be retrieved. Please use the setlocaluniverse command first");
+        }
+
+    }
+    //--------------------------------------------
+    // TO SYMLINK, TO DIR
+    //--------------------------------------------
+    elseif (array_key_exists(1, $argv) &&
+        ('tosymlink' === $argv[1] || 'todir' === $argv[1])
+    ) {
+
+
+        if (false !== ($path = LocalUniverse::create()->getLocalUniversePath())) {
+
+            $mode = ('tosymlink' === $argv[1]) ? "symlink" : "dir";
+
+
+            $localUniversePlanetsDir = $path . "/" . $localUniversePlanetsRelativePath;
+            $appDir = getcwd();
+            $targetPlanetsDir = $appDir . "/" . $planetsRelativePath;
+            if (is_dir($localUniversePlanetsDir)) {
+                if (is_dir($targetPlanetsDir)) {
+                    SymlinkDirTool::create()->setPrinter($printer)->convert($mode, $targetPlanetsDir, $localUniversePlanetsDir);
+                } else {
+                    $printer->error("The application planets directory doesn't exist. Please create it first, then re-execute this command. Expected path: $targetPlanetsDir");
+                }
+            } else {
+                $printer->error("The local universe planets dir was not found: $localUniversePlanetsDir. Have you set it with setlocaluniverse?");
+            }
+        } else {
+            $printer->error("local path couldn't be retrieved. Please use the setlocaluniverse command first");
+        }
+
+    }
+    //--------------------------------------------
+    // CLEAN
+    //--------------------------------------------
+    elseif (array_key_exists(1, $argv) && 'clean' === $argv[1]) {
+
+        $appDir = getcwd();
+        $targetPlanetsDir = $appDir . "/" . $planetsRelativePath;
+
+        if (is_dir($targetPlanetsDir)) {
+            CleanerTool::create()->setPrinter($printer)->clean($targetPlanetsDir);
+        } else {
+            $printer->error("The application planets directory doesn't exist. Please create it first, then re-execute this command. Expected path: $targetPlanetsDir");
+        }
+    } else {
+        $printer->say("");
+        $printer->error("Invalid arguments");
+        $printer->help();
+    }
+
+}
+
+
+
