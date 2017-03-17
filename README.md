@@ -3,6 +3,8 @@ Kamille installer tool
 2017-03-17
 
 
+Work in progress...
+
 
 A naive importer/installer for the [kamille framework](https://github.com/lingtalfi/Kamille).
 
