@@ -15,7 +15,7 @@ class ConsoleStepTracker extends StepTracker
             $info = $this->getStepNumberInfo($stepId);
 
 
-            $label = "step $info: $label";
+            $label = "step $info: $label ...";
             $this->printToOutput($label, false);
         });
 
@@ -23,12 +23,12 @@ class ConsoleStepTracker extends StepTracker
 
 
             if ('done' === $state) {
-                // todo: green
+                $state = "\033[0;32m$state" . "\033[0m";
             } else {
-                // todo: red
+                $state = "\033[0;31m$state" . "\033[0m";
             }
 
-            $this->printToOutput($state, true);
+            $this->printToOutput(" " . $state, true);
         });
     }
 
@@ -42,11 +42,9 @@ class ConsoleStepTracker extends StepTracker
     //--------------------------------------------
     private function printToOutput($msg, $newLine = false)
     {
-        if (false === $newLine) {
-            $msg = str_replace('"', '\\"', $msg);
-            exec('echo -e "' . $msg . '"');
-        } else {
-            echo $msg;
+        echo $msg;
+        if (true === $newLine) {
+            echo PHP_EOL;
         }
     }
 

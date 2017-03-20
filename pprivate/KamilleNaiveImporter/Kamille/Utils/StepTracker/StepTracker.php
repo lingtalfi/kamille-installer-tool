@@ -38,16 +38,16 @@ class StepTracker implements StepTrackerInterface
         call_user_func($this->onStepStopCb, $stepId, $state);
     }
 
-
-
-    //--------------------------------------------
-    //
-    //--------------------------------------------
     public function setSteps(array $steps)
     {
         $this->steps = $steps;
         return $this;
     }
+
+
+    //--------------------------------------------
+    //
+    //--------------------------------------------
 
 
     /**

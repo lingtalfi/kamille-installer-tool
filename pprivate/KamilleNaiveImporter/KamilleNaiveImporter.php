@@ -7,8 +7,8 @@ namespace KamilleNaiveImporter;
 use Kamille\Utils\Exception\UserErrorException;
 use Kamille\Utils\ModuleInstaller\ModuleInstaller;
 use Kamille\Utils\ModuleInstaller\ModuleInstallerInterface;
+use Kamille\Utils\StepTracker\ConsoleStepTracker;
 use Kamille\Utils\StepTracker\StepTrackerAwareInterface;
-use Kamille\Utils\StepTracker\StepTrackerInterface;
 use KamilleNaiveImporter\Importer\KamilleImporterInterface;
 use KamilleNaiveImporter\InstallSummary\InstallSummary;
 use KamilleNaiveImporter\InstallSummary\InstallSummaryInterface;
@@ -55,11 +55,6 @@ class KamilleNaiveImporter
      * @var KamilleImporterInterface[]
      */
     private $importers;
-
-    /**
-     * @var StepTrackerInterface $stepTracker
-     */
-    private $stepTracker;
 
 
     public function __construct()
@@ -247,12 +242,6 @@ class KamilleNaiveImporter
         }
     }
 
-    public function setStepTracker(StepTrackerInterface $stepTracker)
-    {
-        $this->stepTracker = $stepTracker;
-        return $this;
-    }
-
 
 
 
@@ -284,7 +273,7 @@ class KamilleNaiveImporter
                 (null !== $importerId && $importerId === $importer->getImporterId())
             ) {
 
-                $id=$importer->getImporterId();
+                $id = $importer->getImporterId();
                 if (!array_key_exists($id, $modules)) {
                     $modules[$id] = [];
                 }
@@ -397,9 +386,11 @@ class KamilleNaiveImporter
     private function installModule($moduleName)
     {
 
+
+
         $moduleInstaller = $this->getModuleInstaller();
-        if (null !== $this->stepTracker && $moduleInstaller instanceof StepTrackerAwareInterface) {
-            $moduleInstaller->setStepTracker($this->stepTracker);
+        if ($moduleInstaller instanceof StepTrackerAwareInterface) {
+            $moduleInstaller->setStepTracker($this->getStepTracker());
         }
         //
         $isSuccessful = false;
@@ -407,6 +398,7 @@ class KamilleNaiveImporter
         $errorMessage = null;
         if (false === $moduleInstaller->isInstalled($moduleName)) {
             try {
+                $this->getPrinter()->info("Installing module $moduleName");
                 if (true === $moduleInstaller->install($moduleName)) {
                     $isSuccessful = true;
                 }
@@ -444,8 +436,8 @@ class KamilleNaiveImporter
     {
 
         $moduleInstaller = $this->getModuleInstaller();
-        if (null !== $this->stepTracker && $moduleInstaller instanceof StepTrackerAwareInterface) {
-            $moduleInstaller->setStepTracker($this->stepTracker);
+        if ($moduleInstaller instanceof StepTrackerAwareInterface) {
+            $moduleInstaller->setStepTracker($this->getStepTracker());
         }
         //
         $isSuccessful = false;
@@ -453,6 +445,7 @@ class KamilleNaiveImporter
         $errorMessage = null;
         if (true === $moduleInstaller->isInstalled($moduleName)) {
             try {
+                $this->getPrinter()->info("Uninstalling module $moduleName");
                 if (true === $moduleInstaller->uninstall($moduleName)) {
                     $successfullyUninstalled = true;
                     $isSuccessful = true;
@@ -480,6 +473,12 @@ class KamilleNaiveImporter
         }
         //
         return $summary;
+    }
+
+
+    private function getStepTracker()
+    {
+        return ConsoleStepTracker::create();
     }
 
     /**

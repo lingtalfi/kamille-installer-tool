@@ -1,9 +1,8 @@
 Kamille installer tool
 =========================
-2017-03-17
+2017-03-17 --> 2017-03-20
 
 
-Work in progress...
 
 
 A naive importer/installer for the [kamille framework](https://github.com/lingtalfi/Kamille).
@@ -26,8 +25,9 @@ What can it do for you?
 - import a module (and its dependencies)
 - install a module (and its dependencies)
 - uninstall a module  
-- list all imported modules for a given application
-- list all installed modules for a given application
+- list available modules
+- list imported modules for a given application
+- list installed modules for a given application
 - clean the imported modules directories (remove the .git, .gitignore, .DS_Store and .idea files)
 
 
@@ -42,7 +42,7 @@ This installer can do both operations for you: import or install (or uninstall t
 
 Where are the modules imported? By default, in your application's class-modules directory.
 
-To change the "class-modules" repository relative location to something else, you can use the setrelativemodulepath
+To change the "class-modules" repository to something else, you can use the setrelativemodulepath
 command.
 
 
@@ -79,6 +79,7 @@ kamille import {module} {importerId}?                    # import one module and
 kamille import -f {module} {importerId}?                 # import one module and dependencies, replace already existing module(s)/dependencies
 kamille install {module} {importerId}?                   # call the install method of the given module (it fails if the module is not imported already)
 kamille install -f {module} {importerId}?                # import and install one module and all its dependencies 
+kamille uninstall {module} {importerId}?                 # call the uninstall method of the given module 
 kamille list {importerId}?                               # list available modules
 kamille listimported                                     # list imported modules
 kamille listinstalled                                    # list installed modules
@@ -95,6 +96,10 @@ For instance:
     kamille install Connexion KamilleWidgets 
     kamille install -f Connexion 
     kamille install -f Connexion KamilleWidgets
+    kamille uninstall Connexion 
+    kamille uninstall Connexion KamilleWidgets
+    kamille list 
+    kamille list KamilleWidgets
     kamille listimported 
     kamille listinstalled                      
     kamille setmodulesrelpath
@@ -111,8 +116,6 @@ Options
 ```
 
 
-
-By default, this will create the class-modules directory inside your app.
 
 So now, you can basically import any modules :)
 

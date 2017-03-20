@@ -14,7 +14,7 @@ use Kamille\Utils\StepTracker\StepTrackerInterface;
  * It works exactly the same, except on how to access the modules.txt file.
  *
  */
-class ModuleInstaller
+class ModuleInstaller implements StepTrackerAwareInterface
 {
 
     private $file;

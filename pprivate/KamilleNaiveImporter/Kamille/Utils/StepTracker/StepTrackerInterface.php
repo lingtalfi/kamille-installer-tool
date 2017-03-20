@@ -18,7 +18,12 @@ interface StepTrackerInterface
      * state: done|aborted
      *
      */
-    public function stopStep($stepId, $state="done");
+    public function stopStep($stepId, $state = "done");
+
+    /**
+     * array of stepId => label
+     */
+    public function setSteps(array $steps);
 }
 
 

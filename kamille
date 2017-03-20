@@ -1081,8 +1081,6 @@ namespace Kamille\Utils\ModuleInstaller {
 
     use Kamille\Utils\ModuleInstaller\Exception\ModuleInstallerException;
     use Kamille\Module\ModuleInterface;
-
-
     use Kamille\Utils\StepTracker\StepTrackerAwareInterface;
     use Kamille\Utils\StepTracker\StepTrackerInterface;
 
@@ -1091,7 +1089,7 @@ namespace Kamille\Utils\ModuleInstaller {
      * It works exactly the same, except on how to access the modules.txt file.
      *
      */
-    class ModuleInstaller
+    class ModuleInstaller implements StepTrackerAwareInterface
     {
 
         private $file;
@@ -1286,6 +1284,35 @@ namespace Kamille\Module {
          * @return true if the uninstall process is successful
          */
         public function uninstall();
+
+    }
+
+
+    use Kamille\Utils\StepTracker\StepTrackerAwareInterface;
+    use Kamille\Utils\StepTracker\StepTrackerInterface;
+
+    abstract class StepTrackerAwareModule implements ModuleInterface, StepTrackerAwareInterface
+    {
+
+
+        /**
+         * @var StepTrackerInterface $stepTracker
+         */
+        protected $stepTracker;
+
+        public function setStepTracker(StepTrackerInterface $stepTracker)
+        {
+            $this->stepTracker = $stepTracker;
+            $stepTracker->setSteps($this->getStepsList());
+            return $this;
+        }
+
+
+        /**
+         * @return array of steps id => label
+         */
+        abstract protected function getStepsList();
+
 
     }
 }
@@ -1597,11 +1624,12 @@ namespace Tools {
 namespace KamilleNaiveImporter {
 
 
+
     use Kamille\Utils\Exception\UserErrorException;
     use Kamille\Utils\ModuleInstaller\ModuleInstaller;
     use Kamille\Utils\ModuleInstaller\ModuleInstallerInterface;
+    use Kamille\Utils\StepTracker\ConsoleStepTracker;
     use Kamille\Utils\StepTracker\StepTrackerAwareInterface;
-    use Kamille\Utils\StepTracker\StepTrackerInterface;
     use KamilleNaiveImporter\Importer\KamilleImporterInterface;
     use KamilleNaiveImporter\InstallSummary\InstallSummary;
     use KamilleNaiveImporter\InstallSummary\InstallSummaryInterface;
@@ -1648,11 +1676,6 @@ namespace KamilleNaiveImporter {
          * @var KamilleImporterInterface[]
          */
         private $importers;
-
-        /**
-         * @var StepTrackerInterface $stepTracker
-         */
-        private $stepTracker;
 
 
         public function __construct()
@@ -1840,12 +1863,6 @@ namespace KamilleNaiveImporter {
             }
         }
 
-        public function setStepTracker(StepTrackerInterface $stepTracker)
-        {
-            $this->stepTracker = $stepTracker;
-            return $this;
-        }
-
 
 
 
@@ -1990,9 +2007,11 @@ namespace KamilleNaiveImporter {
         private function installModule($moduleName)
         {
 
+
+
             $moduleInstaller = $this->getModuleInstaller();
-            if (null !== $this->stepTracker && $moduleInstaller instanceof StepTrackerAwareInterface) {
-                $moduleInstaller->setStepTracker($this->stepTracker);
+            if ($moduleInstaller instanceof StepTrackerAwareInterface) {
+                $moduleInstaller->setStepTracker($this->getStepTracker());
             }
             //
             $isSuccessful = false;
@@ -2000,6 +2019,7 @@ namespace KamilleNaiveImporter {
             $errorMessage = null;
             if (false === $moduleInstaller->isInstalled($moduleName)) {
                 try {
+                    $this->getPrinter()->info("Installing module $moduleName");
                     if (true === $moduleInstaller->install($moduleName)) {
                         $isSuccessful = true;
                     }
@@ -2037,8 +2057,8 @@ namespace KamilleNaiveImporter {
         {
 
             $moduleInstaller = $this->getModuleInstaller();
-            if (null !== $this->stepTracker && $moduleInstaller instanceof StepTrackerAwareInterface) {
-                $moduleInstaller->setStepTracker($this->stepTracker);
+            if ($moduleInstaller instanceof StepTrackerAwareInterface) {
+                $moduleInstaller->setStepTracker($this->getStepTracker());
             }
             //
             $isSuccessful = false;
@@ -2046,6 +2066,7 @@ namespace KamilleNaiveImporter {
             $errorMessage = null;
             if (true === $moduleInstaller->isInstalled($moduleName)) {
                 try {
+                    $this->getPrinter()->info("Uninstalling module $moduleName");
                     if (true === $moduleInstaller->uninstall($moduleName)) {
                         $successfullyUninstalled = true;
                         $isSuccessful = true;
@@ -2073,6 +2094,12 @@ namespace KamilleNaiveImporter {
             }
             //
             return $summary;
+        }
+
+
+        private function getStepTracker()
+        {
+            return ConsoleStepTracker::create();
         }
 
         /**
@@ -2140,16 +2167,16 @@ namespace Kamille\Utils\StepTracker {
             call_user_func($this->onStepStopCb, $stepId, $state);
         }
 
-
-
-        //--------------------------------------------
-        //
-        //--------------------------------------------
         public function setSteps(array $steps)
         {
             $this->steps = $steps;
             return $this;
         }
+
+
+        //--------------------------------------------
+        //
+        //--------------------------------------------
 
 
         /**
@@ -2184,7 +2211,7 @@ namespace Kamille\Utils\StepTracker {
                 $info = $this->getStepNumberInfo($stepId);
 
 
-                $label = "step $info: $label";
+                $label = "step $info: $label ...";
                 $this->printToOutput($label, false);
             });
 
@@ -2192,12 +2219,12 @@ namespace Kamille\Utils\StepTracker {
 
 
                 if ('done' === $state) {
-                    // todo: green
+                    $state = "\033[0;32m$state" . "\033[0m";
                 } else {
-                    // todo: red
+                    $state = "\033[0;31m$state" . "\033[0m";
                 }
 
-                $this->printToOutput($state, true);
+                $this->printToOutput(" " . $state, true);
             });
         }
 
@@ -2211,11 +2238,9 @@ namespace Kamille\Utils\StepTracker {
         //--------------------------------------------
         private function printToOutput($msg, $newLine = false)
         {
-            if (false === $newLine) {
-                $msg = str_replace('"', '\\"', $msg);
-                exec('echo -e "' . $msg . '"');
-            } else {
-                echo $msg;
+            echo $msg;
+            if (true === $newLine) {
+                echo PHP_EOL;
             }
         }
 
@@ -2263,6 +2288,11 @@ namespace Kamille\Utils\StepTracker {
          *
          */
         public function stopStep($stepId, $state = "done");
+
+        /**
+         * array of stepId => label
+         */
+        public function setSteps(array $steps);
     }
 
 
