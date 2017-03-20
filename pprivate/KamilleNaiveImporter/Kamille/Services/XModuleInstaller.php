@@ -4,8 +4,8 @@
 namespace Kamille\Services;
 
 
-use Kamille\Architecture\ModuleInstaller\ModuleInstaller;
-use Kamille\Architecture\ModuleInstaller\ModuleInstallerInterface;
+use Kamille\Utils\ModuleInstaller\ModuleInstaller;
+use Kamille\Utils\ModuleInstaller\ModuleInstallerInterface;
 
 class XModuleInstaller
 {

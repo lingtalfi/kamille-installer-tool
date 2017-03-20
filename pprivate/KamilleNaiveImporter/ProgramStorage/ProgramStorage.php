@@ -1,15 +1,10 @@
 <?php
 
 
-namespace LocalUniverse;
+namespace ProgramStorage;
 
 
-/**
- * This class allows to get/set the value of the local universe path.
- * It uses a simple text file as the storage.
- * The text file is created next to the current script location (which is presumed to be next to the uni script.
- */
-class LocalUniverse
+class ProgramStorage
 {
 
 
@@ -18,7 +13,7 @@ class LocalUniverse
         return new static();
     }
 
-    public function setLocalUniversePath($path)
+    public function setModulesDirRelativePath($path)
     {
         if (false !== file_put_contents($this->getStorageFile(), $path)) {
             return true;
@@ -27,7 +22,7 @@ class LocalUniverse
     }
 
 
-    public function getLocalUniversePath()
+    public function getModulesDirRelativePath()
     {
         $file = $this->getStorageFile();
         if (file_exists($file)) {
@@ -41,6 +36,6 @@ class LocalUniverse
     //--------------------------------------------
     private function getStorageFile()
     {
-        return __DIR__ . "/local-universe-path.txt";
+        return __DIR__ . "/program-storage.txt";
     }
 }

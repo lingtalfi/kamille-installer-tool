@@ -1,15 +1,17 @@
 <?php
 
 
-namespace KamilleNaiveImporter\ImportSummary;
+namespace KamilleNaiveImporter\InstallSummary;
 
 
-use KamilleNaiveImporter\InstallSummary\InstallSummaryInterface;
+
+
+use KamilleNaiveImporter\ImportSummary\ImportSummary;
 
 class InstallSummary extends ImportSummary implements InstallSummaryInterface
 {
 
-    private $reinstalledModules;
+    private $newlyInstalledModules;
     private $alreadyInstalledModules;
     private $uninstalledModules;
     private $successfullyUninstalledModules;
@@ -18,16 +20,17 @@ class InstallSummary extends ImportSummary implements InstallSummaryInterface
     public function __construct()
     {
         parent::__construct();
-        $this->reinstalledModules = [];
+        $this->newlyInstalledModules = [];
         $this->alreadyInstalledModules = [];
         $this->uninstalledModules = [];
         $this->successfullyUninstalledModules = [];
     }
 
 
-    public function getReinstalledModules()
+
+    public function getNewlyInstalledModules()
     {
-        return $this->reinstalledModules;
+        return $this->newlyInstalledModules;
     }
 
     public function getAlreadyInstalledModules()
@@ -40,10 +43,39 @@ class InstallSummary extends ImportSummary implements InstallSummaryInterface
         return $this->uninstalledModules;
     }
 
-    public function getSuccessfullyUninstalled()
+    public function getSuccessfullyUninstalledModules()
     {
         return $this->successfullyUninstalledModules;
     }
+
+
+    public function setNewlyInstalledModules(array $newlyInstalledModules)
+    {
+        $this->newlyInstalledModules = $newlyInstalledModules;
+        return $this;
+    }
+
+    public function setAlreadyInstalledModules(array $alreadyInstalledModules)
+    {
+        $this->alreadyInstalledModules = $alreadyInstalledModules;
+        return $this;
+    }
+
+    public function setUninstalledModules(array $uninstalledModules)
+    {
+        $this->uninstalledModules = $uninstalledModules;
+        return $this;
+    }
+
+    public function setSuccessfullyUninstalledModules(array $successfullyUninstalledModules)
+    {
+        $this->successfullyUninstalledModules = $successfullyUninstalledModules;
+        return $this;
+    }
+
+    //--------------------------------------------
+    //
+    //--------------------------------------------
 
     //--------------------------------------------
     //
@@ -60,9 +92,15 @@ class InstallSummary extends ImportSummary implements InstallSummaryInterface
         return $this;
     }
 
-    public function addReinstalledModule($module)
+    public function addNewlyInstalledModule($module)
     {
-        $this->reinstalledModules[] = $module;
+        $this->newlyInstalledModules[] = $module;
+        return $this;
+    }
+
+    public function addSuccessfullyUninstalledModule($module)
+    {
+        $this->successfullyUninstalledModules[] = $module;
         return $this;
     }
 }

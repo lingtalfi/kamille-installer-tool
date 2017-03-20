@@ -9,19 +9,20 @@ use KamilleNaiveImporter\ImportSummary\ImportSummaryInterface;
 interface InstallSummaryInterface extends ImportSummaryInterface
 {
     /**
-     * Modules which have actually been replaced (overwritten)
+     * Fresh installed modules
      */
-    public function getReinstalledModules();
+    public function getNewlyInstalledModules();
 
     public function getAlreadyInstalledModules();
 
     /**
-     * return modules left uninstalled after a call to an install command
+     * return modules left uninstalled after a call to an erroneous/buggy install command
      */
     public function getUninstalledModules();
 
     /**
-     * return modules uninstalled via the uninstall command
+     * return modules uninstalled via the uninstall command.
+     * If a module was already uninstalled, it's ignored.
      */
-    public function getSuccessfullyUninstalled();
+    public function getSuccessfullyUninstalledModules();
 }

@@ -10,6 +10,7 @@ class ImportSummary implements ImportSummaryInterface
     private $reImportedModules;
     private $alreadyImportedModules;
     private $notImportedModules;
+    private $errorMessages;
 
 
     public function __construct()
@@ -17,6 +18,7 @@ class ImportSummary implements ImportSummaryInterface
         $this->reImportedModules = [];
         $this->notImportedModules = [];
         $this->alreadyImportedModules = [];
+        $this->errorMessages = [];
         $this->successful = false;
     }
 
@@ -50,6 +52,12 @@ class ImportSummary implements ImportSummaryInterface
         return $this->alreadyImportedModules;
     }
 
+    public function getErrorMessages()
+    {
+        return $this->errorMessages;
+    }
+
+
 
     //--------------------------------------------
     //
@@ -78,6 +86,12 @@ class ImportSummary implements ImportSummaryInterface
         return $this;
     }
 
+    public function setErrorMessages(array $errorMessages)
+    {
+        $this->errorMessages = $errorMessages;
+        return $this;
+    }
+
     //--------------------------------------------
     //
     //--------------------------------------------
@@ -96,6 +110,12 @@ class ImportSummary implements ImportSummaryInterface
     public function addReimportedModule($module)
     {
         $this->reImportedModules[] = $module;
+        return $this;
+    }
+
+    public function addErrorMessage($msg)
+    {
+        $this->errorMessages[] = $msg;
         return $this;
     }
 

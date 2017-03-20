@@ -52,15 +52,15 @@ class CleanerTool
     }
 
 
-    public function clean($targetPlanetsDir)
+    public function clean($targetDir)
     {
         $printer = $this->getPrinter();
-        if (file_exists($targetPlanetsDir)) {
+        if (file_exists($targetDir)) {
 
-            $planets = $this->getPlanetNames($targetPlanetsDir);
-            foreach ($planets as $planet) {
+            $modules = $this->getModulesNames($targetDir);
+            foreach ($modules as $module) {
 
-                $d = $targetPlanetsDir . "/" . $planet;
+                $d = $targetDir . "/" . $module;
 
                 foreach ($this->filesToBeCleaned as $_f) {
                     $f = $d . "/$_f";
@@ -77,7 +77,7 @@ class CleanerTool
                 }
             }
         } else {
-            $printer->error("target planets directory does not exist: $targetPlanetsDir");
+            $printer->error("target planets directory does not exist: $targetDir");
         }
     }
 
@@ -85,10 +85,10 @@ class CleanerTool
     //--------------------------------------------
     //
     //--------------------------------------------
-    private function getPlanetNames($planetsDir)
+    private function getModulesNames($targetDir)
     {
 
-        $files = scandir($planetsDir);
+        $files = scandir($targetDir);
         return array_filter($files, function ($v) {
             if (false !== strpos($v, '.')) {
                 return false;

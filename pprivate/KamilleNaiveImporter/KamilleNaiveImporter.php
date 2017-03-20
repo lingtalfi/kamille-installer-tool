@@ -4,12 +4,16 @@
 namespace KamilleNaiveImporter;
 
 
-use Kamille\Architecture\ModuleInstaller\ModuleInstaller;
-use Kamille\Architecture\ModuleInstaller\ModuleInstallerInterface;
+use Kamille\Utils\Exception\UserErrorException;
+use Kamille\Utils\ModuleInstaller\ModuleInstaller;
+use Kamille\Utils\ModuleInstaller\ModuleInstallerInterface;
+use Kamille\Utils\StepTracker\StepTrackerAwareInterface;
+use Kamille\Utils\StepTracker\StepTrackerInterface;
 use KamilleNaiveImporter\Importer\KamilleImporterInterface;
+use KamilleNaiveImporter\InstallSummary\InstallSummary;
+use KamilleNaiveImporter\InstallSummary\InstallSummaryInterface;
 use ProgramPrinter\ProgramPrinter;
 use ProgramPrinter\ProgramPrinterInterface;
-use KamilleNaiveImporter\Exception\KamilleNaiveImporterException;
 use KamilleNaiveImporter\ImportSummary\ImportSummary;
 use KamilleNaiveImporter\ImportSummary\ImportSummaryInterface;
 
@@ -51,6 +55,11 @@ class KamilleNaiveImporter
      * @var KamilleImporterInterface[]
      */
     private $importers;
+
+    /**
+     * @var StepTrackerInterface $stepTracker
+     */
+    private $stepTracker;
 
 
     public function __construct()
@@ -105,13 +114,13 @@ class KamilleNaiveImporter
      *
      * @param $moduleName
      * @param null $importerId
-     * @return ImportSummary|ImportSummaryInterface|static
-     * @throws KamilleNaiveImporterException
+     * @return ImportSummaryInterface
+     * @throws UserErrorException
      */
     public function import($moduleName, $importerId = null)
     {
         if (null === $this->appDir) {
-            throw new KamilleNaiveImporterException("appDir not set");
+            throw new UserErrorException("appDir not set");
         }
 
         $modulesDir = $this->appDir . "/" . $this->modulesRelativePath;
@@ -137,42 +146,59 @@ class KamilleNaiveImporter
     public function install($moduleName, $importerId = null)
     {
         if (null === $this->appDir) {
-            throw new KamilleNaiveImporterException("appDir not set");
+            throw new UserErrorException("appDir not set");
         }
         $force = $this->_forceImport;
         if (false === $force) {
-            $listImported = $this->getAvailableModules($importerId);
-
-            if (in_array($moduleName, $listImported, true)) {
-                $moduleInstaller = $this->getModuleInstaller();
-                return $moduleInstaller->install($moduleName);
+            $availableModules = $this->getAvailableModules($importerId);
+            if (in_array($moduleName, $availableModules, true)) {
+                $listImported = $this->getImportedModules();
+                if (in_array($moduleName, $listImported, true)) {
+                    $summary = $this->installModule($moduleName);
+                } else {
+                    throw new UserErrorException("This module is not imported: $moduleName. Please import it first (or use the -f flag with the install command)");
+                }
             } else {
-                throw new KamilleNaiveImporterException("This module is not imported: $moduleName. Please import it first (or use the -f flag with the install command)");
+                throw new UserErrorException("This module is not available with importer $importerId");
             }
         } else {
-            $summary = $this->import($moduleName, $importerId);
-            if(true===$summary->isSuccessful()){
-
-            }
-        }
-
-
-        $modulesDir = $this->appDir . "/" . $this->modulesRelativePath;
-
-        foreach ($this->importers as $importer) {
-            if (
-                null === $importerId ||
-                (null !== $importerId && $importerId === $importer->getImporterId())
-            ) {
-                if (true === $importer->canImport($moduleName)) {
-                    $summary = $importer->import($modulesDir, $moduleName, $this->_forceImport);
-                    return $summary;
+            $importSummary = $this->import($moduleName, $importerId);
+            if (true === $importSummary->isSuccessful()) {
+                $summaries = [];
+                $list = $importSummary->getReimportedModules();
+                foreach ($list as $item) {
+                    $summaries[] = $this->installModule($item);
                 }
+                $summary = $this->mergeInstallSummaries($summaries);
+                $summary = $this->mergeImportSummaryIntoInstallSummary($importSummary, $summary);
+            } else {
+                $summary = InstallSummary::create();
+                $summary->setSuccessful(false);
+                $summary->setNotImportedModules([$moduleName]);
+                $summary->addUninstalledModule($moduleName);
             }
         }
-        $summary = ImportSummary::create();
-        $summary->setSuccessful(false);
-        $summary->setUninstalledModules([$moduleName]);
+        return $summary;
+    }
+
+
+    public function uninstall($moduleName, $importerId = null)
+    {
+        if (null === $this->appDir) {
+            throw new UserErrorException("appDir not set");
+        }
+
+        $availableModules = $this->getAvailableModules($importerId);
+        if (in_array($moduleName, $availableModules, true)) {
+            $listImported = $this->getImportedModules();
+            if (in_array($moduleName, $listImported, true)) {
+                $summary = $this->uninstallModule($moduleName, $importerId);
+            } else {
+                throw new UserErrorException("This module is not imported: $moduleName. Therefore it cannot be uninstalled");
+            }
+        } else {
+            throw new UserErrorException("This module is not available with importer $importerId");
+        }
         return $summary;
     }
 
@@ -180,11 +206,13 @@ class KamilleNaiveImporter
     public function listAvailableModules($importerId = null)
     {
         $printer = $this->getPrinter();
-        $modules = $this->getAvailableModules($importerId);
+        $modules = $this->getAvailableModulesByImporter($importerId);
         if (count($modules) > 0) {
-            echo $printer->info("Importer " . $importerId . ":");
-            foreach ($modules as $moduleName) {
-                echo "- " . $moduleName . PHP_EOL;
+            foreach ($modules as $importerId => $importerModules) {
+                echo $printer->info("Importer " . $importerId . ":");
+                foreach ($importerModules as $moduleName) {
+                    echo "- " . $moduleName . PHP_EOL;
+                }
             }
         }
     }
@@ -193,24 +221,10 @@ class KamilleNaiveImporter
     {
         $printer = $this->getPrinter();
         $modulesDir = $this->appDir . "/" . $this->modulesRelativePath;
-        $list = [];
         if (!is_dir($modulesDir)) {
             @mkdir($modulesDir, 0777, true);
         }
-        if (is_dir($modulesDir)) {
-            $files = scandir($modulesDir);
-            foreach ($files as $f) {
-                $file = $modulesDir . "/" . $f;
-                if ('.' !== $f && '..' !== $f) {
-                    if (is_dir($file)) {
-                        $list[] = $f;
-                    }
-                }
-            }
-        } else {
-            throw new KamilleNaiveImporterException("Could not create the modulesDir: $modulesDir");
-        }
-
+        $list = $this->getImportedModules();
         foreach ($list as $moduleName) {
             $printer->say("- $moduleName");
         }
@@ -233,9 +247,11 @@ class KamilleNaiveImporter
         }
     }
 
-
-
-
+    public function setStepTracker(StepTrackerInterface $stepTracker)
+    {
+        $this->stepTracker = $stepTracker;
+        return $this;
+    }
 
 
 
@@ -251,7 +267,28 @@ class KamilleNaiveImporter
                 null === $importerId ||
                 (null !== $importerId && $importerId === $importer->getImporterId())
             ) {
-                $modules = $importer->listAvailableModules();
+                $modules = array_merge($modules, $importer->listAvailableModules());
+
+            }
+        }
+        $modules = array_unique($modules);
+        return $modules;
+    }
+
+    protected function getAvailableModulesByImporter($importerId = null)
+    {
+        $modules = [];
+        foreach ($this->importers as $importer) {
+            if (
+                null === $importerId ||
+                (null !== $importerId && $importerId === $importer->getImporterId())
+            ) {
+
+                $id=$importer->getImporterId();
+                if (!array_key_exists($id, $modules)) {
+                    $modules[$id] = [];
+                }
+                $modules[$id] = array_merge($modules[$id], $importer->listAvailableModules());
             }
         }
         return $modules;
@@ -260,6 +297,191 @@ class KamilleNaiveImporter
     //--------------------------------------------
     //
     //--------------------------------------------
+
+    private function getImportedModules()
+    {
+        $modulesDir = $this->appDir . "/" . $this->modulesRelativePath;
+        $list = [];
+        if (is_dir($modulesDir)) {
+            $files = scandir($modulesDir);
+            foreach ($files as $f) {
+                $file = $modulesDir . "/" . $f;
+                if ('.' !== $f && '..' !== $f) {
+                    if (is_dir($file)) {
+                        $list[] = $f;
+                    }
+                }
+            }
+        }
+        return $list;
+    }
+
+
+    private function mergeImportSummaryIntoInstallSummary(ImportSummaryInterface $importSummary, InstallSummaryInterface $installSummary)
+    {
+
+        $alreadyImportedModules = array_merge($importSummary->getAlreadyImportedModules(), $installSummary->getAlreadyImportedModules());
+        $notImportedModules = array_merge($importSummary->getNotImportedModules(), $installSummary->getNotImportedModules());
+        $reimportedModules = array_merge($importSummary->getReimportedModules(), $installSummary->getReimportedModules());
+        $errorMessages = array_merge($importSummary->getErrorMessages(), $installSummary->getErrorMessages());
+
+        $alreadyImportedModules = array_unique($alreadyImportedModules);
+        $notImportedModules = array_unique($notImportedModules);
+        $reimportedModules = array_unique($reimportedModules);
+        $errorMessages = array_unique($errorMessages);
+
+
+        $installSummary->setAlreadyImportedModules($alreadyImportedModules);
+        $installSummary->setReimportedModules($reimportedModules);
+        $installSummary->setNotImportedModules($notImportedModules);
+        $installSummary->setErrorMessages($errorMessages);
+        return $installSummary;
+    }
+
+
+    private function mergeInstallSummaries(array $summaries)
+    {
+
+        $errorMessages = [];
+        $alreadyImportedModules = [];
+        $notImportedModules = [];
+        $reimportedModules = [];
+        $alreadyInstalledModules = [];
+        $newlyInstalledModules = [];
+        $uninstalledModules = [];
+        $successfullyUninstalledModules = [];
+        $successful = true;
+
+        foreach ($summaries as $summary) {
+            /**
+             * @var InstallSummaryInterface $summary
+             */
+            $errorMessages = array_merge($errorMessages, $summary->getErrorMessages());
+            $alreadyImportedModules = array_merge($alreadyImportedModules, $summary->getAlreadyImportedModules());
+            $notImportedModules = array_merge($notImportedModules, $summary->getNotImportedModules());
+            $reimportedModules = array_merge($reimportedModules, $summary->getReimportedModules());
+            $alreadyInstalledModules = array_merge($alreadyInstalledModules, $summary->getAlreadyInstalledModules());
+            $newlyInstalledModules = array_merge($newlyInstalledModules, $summary->getNewlyInstalledModules());
+            $uninstalledModules = array_merge($uninstalledModules, $summary->getUninstalledModules());
+            $successfullyUninstalledModules = array_merge($successfullyUninstalledModules, $summary->getSuccessfullyUninstalledModules());
+
+            if (false === $summary->isSuccessful()) {
+                $successful = false;
+            }
+        }
+
+
+        $errorMessages = array_unique($errorMessages);
+        $alreadyImportedModules = array_unique($alreadyImportedModules);
+        $notImportedModules = array_unique($notImportedModules);
+        $reimportedModules = array_unique($reimportedModules);
+        $alreadyInstalledModules = array_unique($alreadyInstalledModules);
+        $newlyInstalledModules = array_unique($newlyInstalledModules);
+        $uninstalledModules = array_unique($uninstalledModules);
+        $successfullyUninstalledModules = array_unique($successfullyUninstalledModules);
+
+        return InstallSummary::create()
+            ->setErrorMessages($errorMessages)
+            ->setSuccessfullyUninstalledModules($successfullyUninstalledModules)
+            ->setUninstalledModules($uninstalledModules)
+            ->setNewlyInstalledModules($newlyInstalledModules)
+            ->setAlreadyInstalledModules($alreadyInstalledModules)
+            ->setAlreadyImportedModules($alreadyImportedModules)
+            ->setNotImportedModules($notImportedModules)
+            ->setReimportedModules($reimportedModules)
+            ->setSuccessful($successful);
+
+    }
+
+
+    private function installModule($moduleName)
+    {
+
+        $moduleInstaller = $this->getModuleInstaller();
+        if (null !== $this->stepTracker && $moduleInstaller instanceof StepTrackerAwareInterface) {
+            $moduleInstaller->setStepTracker($this->stepTracker);
+        }
+        //
+        $isSuccessful = false;
+        $alreadyInstalled = false;
+        $errorMessage = null;
+        if (false === $moduleInstaller->isInstalled($moduleName)) {
+            try {
+                if (true === $moduleInstaller->install($moduleName)) {
+                    $isSuccessful = true;
+                }
+            } catch (\Exception $e) {
+                $isSuccessful = false;
+                $errorMessage = $e->getMessage();
+            }
+
+        } else {
+            $isSuccessful = true;
+            $alreadyInstalled = true;
+        }
+
+
+        $summary = InstallSummary::create();
+        $summary->setSuccessful($isSuccessful);
+        if (true === $isSuccessful) {
+            if (true === $alreadyInstalled) {
+                $summary->addAlreadyInstalledModule($moduleName);
+            } else {
+                $summary->addNewlyInstalledModule($moduleName);
+            }
+        } else {
+            $summary->addUninstalledModule($moduleName);
+            if (null !== $errorMessage) {
+                $summary->addErrorMessage($errorMessage);
+            }
+        }
+        //
+        return $summary;
+    }
+
+
+    private function uninstallModule($moduleName)
+    {
+
+        $moduleInstaller = $this->getModuleInstaller();
+        if (null !== $this->stepTracker && $moduleInstaller instanceof StepTrackerAwareInterface) {
+            $moduleInstaller->setStepTracker($this->stepTracker);
+        }
+        //
+        $isSuccessful = false;
+        $successfullyUninstalled = false;
+        $errorMessage = null;
+        if (true === $moduleInstaller->isInstalled($moduleName)) {
+            try {
+                if (true === $moduleInstaller->uninstall($moduleName)) {
+                    $successfullyUninstalled = true;
+                    $isSuccessful = true;
+                }
+            } catch (\Exception $e) {
+                $isSuccessful = false;
+                $errorMessage = $e->getMessage();
+            }
+
+        } else {
+            $isSuccessful = true;
+        }
+
+
+        $summary = InstallSummary::create();
+        $summary->setSuccessful($isSuccessful);
+        if (true === $isSuccessful) {
+            if (true === $successfullyUninstalled) {
+                $summary->addSuccessfullyUninstalledModule($moduleName);
+            }
+        } else {
+            if (null !== $errorMessage) {
+                $summary->addErrorMessage($errorMessage);
+            }
+        }
+        //
+        return $summary;
+    }
+
     /**
      * @return ProgramPrinterInterface
      */
@@ -282,4 +504,6 @@ class KamilleNaiveImporter
         }
         return $this->moduleInstaller;
     }
+
+
 }

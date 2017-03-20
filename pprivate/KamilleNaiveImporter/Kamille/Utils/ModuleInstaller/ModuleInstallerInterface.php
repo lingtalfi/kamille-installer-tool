@@ -1,10 +1,10 @@
 <?php
 
 
-namespace Kamille\Architecture\ModuleInstaller;
+namespace Kamille\Utils\ModuleInstaller;
 
 
-use Kamille\Architecture\ModuleInstaller\Exception\ModuleInstallerException;
+use Kamille\Utils\ModuleInstaller\Exception\ModuleInstallerException;
 
 
 /**

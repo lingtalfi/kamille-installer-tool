@@ -1,11 +1,13 @@
 <?php
 
 
-namespace Kamille\Architecture\ModuleInstaller;
+namespace Kamille\Utils\ModuleInstaller;
 
 
-use Kamille\Architecture\ModuleInstaller\Exception\ModuleInstallerException;
+use Kamille\Utils\ModuleInstaller\Exception\ModuleInstallerException;
 use Kamille\Module\ModuleInterface;
+use Kamille\Utils\StepTracker\StepTrackerAwareInterface;
+use Kamille\Utils\StepTracker\StepTrackerInterface;
 
 /**
  * This is a hacked version of the ModuleInstaller class (from the Kamille framework).
@@ -17,11 +19,15 @@ class ModuleInstaller
 
     private $file;
     private $appDir;
+    private $stepTracker;
 
 
     public function install($moduleName)
     {
         $oClass = $this->getClassInstance($moduleName);
+        if (null !== $this->stepTracker && $oClass instanceof StepTrackerAwareInterface) {
+            $oClass->setStepTracker($this->stepTracker);
+        }
         $oClass->install();
         $list = $this->getInstalledModulesList();
         if (!in_array($moduleName, $list)) {
@@ -34,9 +40,12 @@ class ModuleInstaller
     public function uninstall($moduleName)
     {
         $oClass = $this->getClassInstance($moduleName);
+        if (null !== $this->stepTracker && $oClass instanceof StepTrackerAwareInterface) {
+            $oClass->setStepTracker($this->stepTracker);
+        }
         $oClass->uninstall();
         $list = $this->getInstalledModulesList();
-        unset($list[$moduleName]);
+        unset($list[array_search($moduleName, $list)]);
         $this->writeList($list);
         return true;
     }
@@ -64,6 +73,17 @@ class ModuleInstaller
         $this->appDir = $appDir;
         return $this;
     }
+
+    public function setStepTracker(StepTrackerInterface $stepTracker)
+    {
+        $this->stepTracker = $stepTracker;
+        return $this;
+    }
+
+
+
+
+
 
     //--------------------------------------------
     //
