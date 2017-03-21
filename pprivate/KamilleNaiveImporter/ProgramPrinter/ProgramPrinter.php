@@ -62,7 +62,8 @@ kamille listimported                                     # list imported modules
 kamille listinstalled                                    # list installed modules
 kamille setmodulesrelpath                                # set the relative path to the modules directory (from the app directory)
 kamille getmodulesrelpath                                # get the relative path to the modules directory (from the app directory)
-kamille clean                                            # removes the .git, .gitignore, .idea and .DS_Store files at the top level of your application's directory
+kamille clean                                            # removes the .git, .gitignore, .idea and .DS_Store files at the top level of your modules' directories
+kamille cleanr                                           # removes the .git, .gitignore, .idea and .DS_Store files in your modules directories, recursively 
 
 For instance: 
     kamille import Connexion
@@ -82,6 +83,7 @@ For instance:
     kamille setmodulesrelpath
     kamille getmodulesrelpath
     kamille clean
+    kamille cleanr
     
     
 Options

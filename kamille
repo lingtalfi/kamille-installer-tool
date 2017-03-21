@@ -1399,7 +1399,8 @@ kamille listimported                                     # list imported modules
 kamille listinstalled                                    # list installed modules
 kamille setmodulesrelpath                                # set the relative path to the modules directory (from the app directory)
 kamille getmodulesrelpath                                # get the relative path to the modules directory (from the app directory)
-kamille clean                                            # removes the .git, .gitignore, .idea and .DS_Store files at the top level of your application's directory
+kamille clean                                            # removes the .git, .gitignore, .idea and .DS_Store files at the top level of your modules' directories
+kamille cleanr                                           # removes the .git, .gitignore, .idea and .DS_Store files in your modules directories, recursively 
 
 For instance: 
     kamille import Connexion
@@ -1419,6 +1420,7 @@ For instance:
     kamille setmodulesrelpath
     kamille getmodulesrelpath
     kamille clean
+    kamille cleanr
     
     
 Options
@@ -1559,29 +1561,15 @@ namespace Tools {
         }
 
 
-        public function clean($targetDir)
+        public function clean($targetDir, $recursive = false)
         {
             $printer = $this->getPrinter();
             if (file_exists($targetDir)) {
 
                 $modules = $this->getModulesNames($targetDir);
                 foreach ($modules as $module) {
-
                     $d = $targetDir . "/" . $module;
-
-                    foreach ($this->filesToBeCleaned as $_f) {
-                        $f = $d . "/$_f";
-                        if (file_exists($f)) {
-                            unlink($f);
-                        }
-                    }
-
-                    foreach ($this->dirsToBeCleaned as $_f) {
-                        $f = $d . "/$_f";
-                        if (is_dir($f)) {
-                            FileSystemTool::remove($f);
-                        }
-                    }
+                    $this->cleanDir($d, $recursive);
                 }
             } else {
                 $printer->error("target planets directory does not exist: $targetDir");
@@ -1592,6 +1580,35 @@ namespace Tools {
         //--------------------------------------------
         //
         //--------------------------------------------
+        private function cleanDir($dir, $recursive = false)
+        {
+            foreach ($this->filesToBeCleaned as $_f) {
+                $f = $dir . "/$_f";
+                if (file_exists($f)) {
+                    unlink($f);
+                }
+            }
+            foreach ($this->dirsToBeCleaned as $_f) {
+                $f = $dir . "/$_f";
+                if (is_dir($f)) {
+                    FileSystemTool::remove($f);
+                }
+            }
+
+            if (true === $recursive) {
+                $files = scandir($dir);
+                foreach ($files as $f) {
+                    if ('.' !== $f && '..' !== $f) {
+                        $file = $dir . "/" . $f;
+                        if (is_dir($file)) {
+                            $this->cleanDir($file, $recursive);
+                        }
+                    }
+                }
+            }
+        }
+
+
         private function getModulesNames($targetDir)
         {
 
@@ -2594,13 +2611,21 @@ namespace {
         //--------------------------------------------
         // CLEAN
         //--------------------------------------------
-        elseif (array_key_exists(1, $argv) && 'clean' === $argv[1]) {
+        elseif (array_key_exists(1, $argv) &&
+            (
+                    'clean' === $argv[1] ||
+                    'cleanr' === $argv[1]
+            )
+        ) {
+
+
+            $recursive = ('cleanr' === $argv[1]);
 
             $appDir = getcwd();
             $modulesDir = $appDir . "/" . $modulesRelativePath;
 
             if (is_dir($modulesDir)) {
-                CleanerTool::create()->setPrinter($printer)->clean($modulesDir);
+                CleanerTool::create()->setPrinter($printer)->clean($modulesDir, $recursive);
                 $printer->success('The following directory has been successfully cleaned: ' . $modulesDir . '');
             } else {
                 $printer->error("The application modules directory doesn't exist. Please create it first, then re-execute this command. Expected path: $modulesDir");
