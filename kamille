@@ -878,6 +878,7 @@ namespace KamilleNaiveImporter\Importer {
         {
             $success = false;
             $summary = ImportSummary::create();
+
             if (is_dir($modulesDir)) {
                 $success = true;
 
@@ -1635,6 +1636,7 @@ namespace Tools {
 namespace KamilleNaiveImporter {
 
 
+    use Bat\FileSystemTool;
     use Kamille\Utils\Exception\UserErrorException;
     use Kamille\Utils\ModuleInstaller\ModuleInstaller;
     use Kamille\Utils\ModuleInstaller\ModuleInstallerInterface;
@@ -1757,7 +1759,13 @@ namespace KamilleNaiveImporter {
                     (null !== $importerId && $importerId === $importer->getImporterId())
                 ) {
                     if (true === $importer->canImport($moduleName)) {
+
+                        $moduleDir = $modulesDir . "/" . $moduleName;
+                        if (is_dir($moduleDir)) {
+                            FileSystemTool::remove($moduleDir);
+                        }
                         $summary = $importer->import($modulesDir, $moduleName, $this->_forceImport);
+
                         return $summary;
                     }
                 }
@@ -2613,8 +2621,8 @@ namespace {
         //--------------------------------------------
         elseif (array_key_exists(1, $argv) &&
             (
-                    'clean' === $argv[1] ||
-                    'cleanr' === $argv[1]
+                'clean' === $argv[1] ||
+                'cleanr' === $argv[1]
             )
         ) {
 
