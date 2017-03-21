@@ -1624,7 +1624,6 @@ namespace Tools {
 namespace KamilleNaiveImporter {
 
 
-
     use Kamille\Utils\Exception\UserErrorException;
     use Kamille\Utils\ModuleInstaller\ModuleInstaller;
     use Kamille\Utils\ModuleInstaller\ModuleInstallerInterface;
@@ -2008,7 +2007,6 @@ namespace KamilleNaiveImporter {
         {
 
 
-
             $moduleInstaller = $this->getModuleInstaller();
             if ($moduleInstaller instanceof StepTrackerAwareInterface) {
                 $moduleInstaller->setStepTracker($this->getStepTracker());
@@ -2302,6 +2300,7 @@ namespace Kamille\Utils\StepTracker {
 namespace {
 
 
+    use BumbleBee\Autoload\ButineurAutoloader;
     use Kamille\Utils\Exception\UserErrorException;
     use KamilleNaiveImporter\Importer\KamilleWidgetsKamilleImporter;
     use KamilleNaiveImporter\ImportSummary\ImportSummaryInterface;
@@ -2472,6 +2471,48 @@ namespace {
     $printer = ProgramPrinter::create();
     $appDir = getcwd();
     try {
+
+
+        //--------------------------------------------
+        // AUTOLOAD CODE
+        //--------------------------------------------
+        /**
+         * I thought about how to autoload the application from this script.
+         * I found out at least three ways:
+         *
+         * - init
+         * - autoload
+         * - emulation
+         *
+         *
+         * Init: call the init.php of the application.
+         * I didn't choose that because it has the side effect of potentially calling undesirable code.
+         *
+         * Autoload: the idea of splitting the init.php of the application in two: init.php and autoload.php,
+         * init.php would call autoload.php at the application level, and thus we could call only autoload.php
+         * from here.
+         * I didn't choose this solution because then every time the application is called, it costs one
+         * more require_once call; but the install process is one that is not called often compared to the calls
+         * to the application itself.
+         *
+         * I chose emulation: basically re-emulating the autoload code from here.
+         * The downside is that if the application code (the module installation in this case)
+         * uses the Autoloader again, it might create weird situations, and possible conflicts.
+         * If that happened, then we should fallback to the second method (autoload).
+         *
+         */
+        $file = $appDir . '/class-planets/BumbleBee/Autoload/BeeAutoloader.php';
+        if (file_exists($file)) {
+            require_once $appDir . '/class-planets/BumbleBee/Autoload/BeeAutoloader.php';
+            require_once $appDir . '/class-planets/BumbleBee/Autoload/ButineurAutoloader.php';
+            ButineurAutoloader::getInst()
+                ->addLocation($appDir . "/class")
+                ->addLocation($appDir . "/class-core")
+                ->addLocation($appDir . "/class-modules")
+                ->addLocation($appDir . "/class-planets");
+            ButineurAutoloader::getInst()->start();
+        }
+
 
         $modulesRelativePath = 'class-modules';
 
