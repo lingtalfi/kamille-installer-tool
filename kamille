@@ -2475,31 +2475,7 @@ namespace {
         //--------------------------------------------
         // AUTOLOAD CODE
         //--------------------------------------------
-        /**
-         * I thought about how to autoload the application from this script.
-         * I found out at least three ways:
-         *
-         * - init
-         * - autoload
-         * - emulation
-         *
-         *
-         * Init: call the init.php of the application.
-         * I didn't choose that because it has the side effect of potentially calling undesirable code.
-         *
-         * Autoload: the idea of splitting the init.php of the application in two: init.php and autoload.php,
-         * init.php would call autoload.php at the application level, and thus we could call only autoload.php
-         * from here.
-         * I didn't choose this solution because then every time the application is called, it costs one
-         * more require_once call; but the install process is one that is not called often compared to the calls
-         * to the application itself.
-         *
-         * I chose emulation: basically re-emulating the autoload code from here.
-         * The downside is that if the application code (the module installation in this case)
-         * uses the Autoloader again, it might create weird situations, and possible conflicts.
-         * If that happened, then we should fallback to the second method (autoload).
-         *
-         */
+        $_SERVER['APPLICATION_ENVIRONMENT'] = "dev"; // hack environment here depending on your prefs
         $file = $appDir . '/boot.php';
         if (file_exists($file)) {
             require_once $file;
