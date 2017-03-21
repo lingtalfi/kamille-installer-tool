@@ -1307,6 +1307,11 @@ namespace Kamille\Module {
             return $this;
         }
 
+        public function getStepTracker()
+        {
+            return $this->stepTracker;
+        }
+
 
         /**
          * @return array of steps id => label

@@ -23,6 +23,11 @@ abstract class StepTrackerAwareModule implements ModuleInterface, StepTrackerAwa
         return $this;
     }
 
+    public function getStepTracker()
+    {
+        return $this->stepTracker;
+    }
+
 
     /**
      * @return array of steps id => label
