@@ -2300,7 +2300,6 @@ namespace Kamille\Utils\StepTracker {
 namespace {
 
 
-    use BumbleBee\Autoload\ButineurAutoloader;
     use Kamille\Utils\Exception\UserErrorException;
     use KamilleNaiveImporter\Importer\KamilleWidgetsKamilleImporter;
     use KamilleNaiveImporter\ImportSummary\ImportSummaryInterface;
@@ -2501,16 +2500,9 @@ namespace {
          * If that happened, then we should fallback to the second method (autoload).
          *
          */
-        $file = $appDir . '/class-planets/BumbleBee/Autoload/BeeAutoloader.php';
+        $file = $appDir . '/boot.php';
         if (file_exists($file)) {
-            require_once $appDir . '/class-planets/BumbleBee/Autoload/BeeAutoloader.php';
-            require_once $appDir . '/class-planets/BumbleBee/Autoload/ButineurAutoloader.php';
-            ButineurAutoloader::getInst()
-                ->addLocation($appDir . "/class")
-                ->addLocation($appDir . "/class-core")
-                ->addLocation($appDir . "/class-modules")
-                ->addLocation($appDir . "/class-planets");
-            ButineurAutoloader::getInst()->start();
+            require_once $file;
         }
 
 
