@@ -1,6 +1,6 @@
 Kamille installer tool
 =========================
-2017-03-17 --> 2017-03-20
+2017-03-17 --> 2017-03-21
 
 
 
@@ -85,7 +85,8 @@ kamille listimported                                     # list imported modules
 kamille listinstalled                                    # list installed modules
 kamille setmodulesrelpath                                # set the relative path to the modules directory (from the app directory)
 kamille getmodulesrelpath                                # get the relative path to the modules directory (from the app directory)
-kamille clean                                            # removes the .git, .gitignore, .idea and .DS_Store files at the top level of your application's directory
+kamille clean                                            # removes the .git, .gitignore, .idea and .DS_Store files at the top level of your modules' directories
+kamille cleanr                                           # removes the .git, .gitignore, .idea and .DS_Store files in your modules directories, recursively 
 
 For instance: 
     kamille import Connexion
@@ -105,6 +106,7 @@ For instance:
     kamille setmodulesrelpath
     kamille getmodulesrelpath
     kamille clean
+    kamille cleanr
     
     
 Options
@@ -112,7 +114,6 @@ Options
 -f: when used with the import keyword, force overwriting of existing modules and dependencies. If not set, the Importer will skip existing planets/dependencies.
     when used with the install keyword, force the importing (in force mode too) of the modules
     
-
 ```
 
 
