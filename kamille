@@ -1293,8 +1293,6 @@ namespace Kamille\Module {
 
     abstract class StepTrackerAwareModule implements ModuleInterface, StepTrackerAwareInterface
     {
-
-
         /**
          * @var StepTrackerInterface $stepTracker
          */
@@ -1303,7 +1301,6 @@ namespace Kamille\Module {
         public function setStepTracker(StepTrackerInterface $stepTracker)
         {
             $this->stepTracker = $stepTracker;
-            $stepTracker->setSteps($this->getStepsList());
             return $this;
         }
 
@@ -1311,14 +1308,6 @@ namespace Kamille\Module {
         {
             return $this->stepTracker;
         }
-
-
-        /**
-         * @return array of steps id => label
-         */
-        abstract protected function getStepsList();
-
-
     }
 }
 
