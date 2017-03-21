@@ -12,7 +12,8 @@ class KamilleWidgetsKamilleImporter implements KamilleImporterInterface
 {
 
     private static $dependencyMap = [
-        "Connexion" => [],
+        "Connexion" => ["GentelellaWebDirectory"],
+        "GentelellaWebDirectory" => [],
     ];
 
 

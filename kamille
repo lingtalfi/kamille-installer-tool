@@ -839,9 +839,9 @@ namespace KamilleNaiveImporter\Importer {
     {
 
         private static $dependencyMap = [
-            "Connexion" => [],
+            "Connexion" => ["GentelellaWebDirectory"],
+            "GentelellaWebDirectory" => [],
         ];
-
 
         public static function create()
         {
