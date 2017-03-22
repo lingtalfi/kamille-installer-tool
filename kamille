@@ -2,53 +2,196 @@
 <?php
 
 
-/**
- *
- *
- *
- * // Move the cursor to the beginning of the line
- * $this->output->write("\x0D");
- *
- * // Erase the line
- * $this->output->write("\x1B[2K");
- *
- * // Erase previous lines
- * if ($this->formatLineCount > 0) {
- * $this->output->write(str_repeat("\x1B[1A\x1B[2K", $this->formatLineCount));
- * }
- *
- *
- *
-// Move cursor backwards
-$output->write("\033[1D");
- *
- *
-// Erase characters from cursor to end of line
-$output->write("\033[K");
- *
- *
- *
-// Save cursor position
-$output->write("\0337");
-// Write highlighted text
-$output->write('<hl>'.substr($matches[$ofs], $i).'</hl>');
-// Restore cursor position
-$output->write("\0338");
- */
+namespace {
 
 
-function eraseLine($n = 1)
-{
-    if ($n < 1) {
-        throw new \Exception("Cannot erase less than one line");
+    use BumbleBee\Autoload\ButineurAutoloader;
+    use Kamille\Utils\Exception\UserErrorException;
+    use KamilleNaiveImporter\Importer\KamilleModulesImporter;
+    use KamilleNaiveImporter\KamilleNaiveImporter;
+    use KamilleNaiveImporter\Log\ProgramLog;
+    use Output\ProgramOutput;
+    use Tools\CleanerTool;
+
+
+    $appDir = getcwd();
+
+
+    //--------------------------------------------
+    // AUTOLOAD CODE
+    //--------------------------------------------
+    $_SERVER['APPLICATION_ENVIRONMENT'] = "dev"; // hack environment here depending on your prefs
+    $file = $appDir . '/boot.php';
+    if (file_exists($file)) {
+        require_once $file;
+        ButineurAutoloader::getInst()
+            ->addLocation(__DIR__ . "/pprivate2");
+
     }
-    for ($i = 0; $i < $n; $i++) {
-        echo "\x1B[1A\x1B[2K";
+
+    $output = ProgramOutput::create();
+
+
+    function getHelpText()
+    {
+        return <<<HELP
+\e[34m        
+Usage
+-------
+kamille import {module}                     # import a module and its dependencies, skip already existing module(s)/dependencies
+kamille import -f {module}                  # import a module and its dependencies, replace already existing module(s)/dependencies
+kamille install {module}                    # install a module and its dependencies, will import if necessary, skip already existing module(s)/dependencies
+kamille install -f {module}                 # install a module and its dependencies, will import if necessary, replace already existing module(s)/dependencies 
+kamille uninstall {module}                  # call the uninstall method of the given module 
+kamille list {importerAlias}?               # list available modules
+kamille listimported                        # list imported modules
+kamille listinstalled                       # list installed modules
+kamille clean                               # removes the .git, .gitignore, .idea and .DS_Store files at the top level of your modules' directories
+kamille cleanr                              # removes the .git, .gitignore, .idea and .DS_Store files in your modules directories, recursively 
+
+For instance: 
+    kamille import Connexion
+    kamille import kw.Connexion 
+    kamille import -f Connexion 
+    kamille import -f kw.Connexion 
+    kamille install Connexion 
+    kamille install kw.Connexion  
+    kamille install -f Connexion 
+    kamille install -f kw.Connexion 
+    kamille uninstall Connexion 
+    kamille uninstall kw.Connexion
+    kamille list 
+    kamille list kw
+    kamille listimported 
+    kamille listinstalled    
+    kamille clean
+    kamille cleanr
+    
+    
+Options
+-------------
+-f: when used with the import keyword, force overwriting of existing modules and dependencies. If not set, the Importer will skip existing planets/dependencies.
+    when used with the install keyword, force the importing (in force mode too) of the modules
+    
+
+\e[0m
+HELP;
+
+    }
+
+
+    try {
+
+        $modulesRelativePath = 'class-modules';
+
+        $force = false;
+        if (array_key_exists(2, $argv) && '-f' === $argv[2]) {
+            $force = true;
+            unset($argv[2]);
+            $argv = array_merge($argv);
+        }
+
+
+        $kamille = KamilleNaiveImporter::create()
+            ->setOutput($output)
+            ->setAppDir($appDir)
+            ->addImporter(KamilleModulesImporter::create()->setAliases(['km']));
+
+
+        //--------------------------------------------
+        // IMPORT
+        // INSTALL
+        // UNINSTALL
+        //--------------------------------------------
+        if (array_key_exists(1, $argv) &&
+            ('import' === $argv[1] || 'install' === $argv[1] || 'uninstall' === $argv[1])
+            && array_key_exists(2, $argv)
+        ) {
+
+
+            $command = $argv[1];
+            $moduleName = $argv[2];
+
+
+            $modulesDir = $appDir . "/" . $modulesRelativePath;
+            if (false === file_exists($modulesDir)) {
+                @mkdir($modulesDir, 0777, true);
+            }
+
+            if (file_exists($modulesDir)) {
+
+
+                if ('import' === $command) {
+                    $kamille->import($moduleName, $modulesDir, $force);
+                } elseif ('install' === $command) {
+                    $kamille->install($moduleName, $modulesDir, $force);
+                } elseif ('uninstall' === $command) {
+                    $kamille->uninstall($moduleName, $modulesDir);
+                }
+            } else {
+                ProgramLog::error("Cannot create the modules directory: $modulesDir");
+            }
+        }
+        //--------------------------------------------
+        // LIST
+        //--------------------------------------------
+        elseif (array_key_exists(1, $argv) && 'list' === $argv[1]) {
+            $importerAlias = null;
+            if (array_key_exists(2, $argv)) {
+                $importerAlias = $argv[2];
+            }
+            $availableModules = $kamille->getAvailableModulesList($importerAlias);
+            if (count($availableModules) > 0) {
+                foreach ($availableModules as $importerFullName => $modules) {
+                    $output->notice("Modules available for importer $importerFullName:");
+                    $output->notice("-------------------------------------------------");
+                    foreach ($modules as $module) {
+                        $output->notice("- $module");
+                    }
+                }
+            }
+        } elseif (array_key_exists(1, $argv) && 'listimported' === $argv[1]) {
+            $modules = $kamille->getImportedModulesList();
+            foreach ($modules as $module) {
+                $output->notice("- $module");
+            }
+        } elseif (array_key_exists(1, $argv) && 'listinstalled' === $argv[1]) {
+            $modules = $kamille->getInstalledModulesList();
+            foreach ($modules as $module) {
+                $output->notice("- $module");
+            }
+        }
+        //--------------------------------------------
+        // CLEAN
+        //--------------------------------------------
+        elseif (array_key_exists(1, $argv) &&
+            (
+                'clean' === $argv[1] ||
+                'cleanr' === $argv[1]
+            )
+        ) {
+
+            $recursive = ('cleanr' === $argv[1]);
+            $appDir = getcwd();
+            $modulesDir = $appDir . "/" . $modulesRelativePath;
+
+            if (is_dir($modulesDir)) {
+                CleanerTool::create()->clean($modulesDir, $recursive);
+
+                $output->success('The following directory has been successfully cleaned: ' . $modulesDir . '');
+            } else {
+                $output->error("The application modules directory doesn't exist. Please create it first, then re-execute this command. Expected path: $modulesDir");
+            }
+        } else {
+            $output->notice("");
+            $output->error("Invalid arguments");
+            $output->notice(getHelpText());
+        }
+
+    } catch (UserErrorException $e) {
+        $output->error($e->getMessage());
     }
 }
 
 
-echo "line 1" . PHP_EOL;
-echo "line 2" . PHP_EOL;
-echo "line 3" . PHP_EOL;
-eraseLine(2);
+

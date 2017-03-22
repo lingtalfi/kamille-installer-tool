@@ -12,6 +12,7 @@ Implementation notes
 Importer
 -----------
 The importer role is to fetch distant modules, and put them in a given target directory.
+An importer is able a module and all its dependencies (i.e. the dependencies can also be imported by the same module).
 Importer have a full name, and aliases.
 
 ### solving module name conflicts

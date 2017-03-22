@@ -40,6 +40,8 @@ interface ImporterInterface
 
     /**
      * Import the given module(s) in the given modulesDir directory.
+     * Does NOT import dependencies.
+     * @return bool, indicating success or failure
      */
     public function import($moduleName, $modulesDir);
 

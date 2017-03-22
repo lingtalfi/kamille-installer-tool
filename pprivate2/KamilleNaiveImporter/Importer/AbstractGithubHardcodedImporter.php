@@ -33,19 +33,23 @@ abstract class AbstractGithubHardcodedImporter extends AbstractHardcodedImporter
     //--------------------------------------------
     public function import($moduleName, $modulesDir)
     {
-        $tree = $this->getDependencyTree($moduleName);
-        foreach ($tree as $module) {
-            $output = [];
-            $returnVar = 0;
+        $output = [];
+        $returnVar = 0;
 
-            $cmd = 'cd "' . $modulesDir . '"; git clone https://github.com/' . $this->githubRepoName . '/' . $module . '.git';
-            exec($cmd, $output, $returnVar);
+        $moduleDir = $modulesDir . "/$moduleName";
 
-            if (0 === $returnVar) {
-                ProgramLog::success("Module $module was successfully imported");
-            } else {
-                ProgramLog::error("An error occurred with the git clone command while importing module $module");
-            }
+        if (file_exists($moduleDir)) {
+            ProgramLog::info("Module $moduleName is already imported");
+            return true;
         }
+        $cmd = 'cd "' . $modulesDir . '"; git clone https://github.com/' . $this->githubRepoName . '/' . $moduleName . '.git';
+        exec($cmd, $output, $returnVar);
+
+        if (0 === $returnVar) {
+            return true;
+        } else {
+            return false;
+        }
+
     }
 }
