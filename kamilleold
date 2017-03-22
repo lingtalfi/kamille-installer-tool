@@ -1,0 +1,347 @@
+#!/usr/bin/env php
+<?php
+
+
+namespace {
+
+
+
+    use BumbleBee\Autoload\ButineurAutoloader;
+
+
+    use Kamille\Utils\Exception\UserErrorException;
+    use KamilleNaiveImporter\Importer\KamilleWidgetsKamilleImporter;
+    use KamilleNaiveImporter\ImportSummary\ImportSummaryInterface;
+    use KamilleNaiveImporter\InstallSummary\InstallSummaryInterface;
+    use KamilleNaiveImporter\KamilleNaiveImporter;
+    use ProgramPrinter\ProgramPrinter;
+    use ProgramPrinter\ProgramPrinterInterface;
+    use ProgramStorage\ProgramStorage;
+    use Tools\CleanerTool;
+
+
+    if (!function_exists('a')) {
+        function a()
+        {
+            foreach (func_get_args() as $arg) {
+                ob_start();
+                var_dump($arg);
+                $output = ob_get_clean();
+                if ('1' !== ini_get('xdebug.default_enable')) {
+                    $output = preg_replace("!\]\=\>\n(\s+)!m", "] => ", $output);
+                }
+                if ('cli' === PHP_SAPI) {
+                    echo $output;
+                } else {
+                    echo '<pre>' . $output . '</pre>';
+                }
+            }
+        }
+
+        function az()
+        {
+            call_user_func_array('a', func_get_args());
+            exit;
+        }
+    }
+
+
+    function printImportSummary(ImportSummaryInterface $summary, ProgramPrinterInterface $printer)
+    {
+        //--------------------------------------------
+        // PRINT SUMMARY
+        //--------------------------------------------
+        $successfull = $summary->isSuccessful();
+        if (true === $successfull) {
+            $printer->success("The import was successful");
+        } else {
+            $printer->error("The import was not successful");
+        }
+        $alreadyInstalled = $summary->getAlreadyImportedModules();
+        $reinstalled = $summary->getReimportedModules();
+        $uninstalled = $summary->getNotImportedModules();
+
+
+        $cAlready = count($alreadyInstalled);
+        $printer->say("$cAlready module(s) were already imported", false);
+        if ($cAlready > 0) {
+            $printer->say(": " . implode(", ", $alreadyInstalled));
+        } else {
+            $printer->say("");
+        }
+
+        $cReinstalled = count($reinstalled);
+        $printer->say("$cReinstalled module(s) have been (re-)imported", false);
+        if ($cReinstalled > 0) {
+            $printer->say(": " . implode(", ", $reinstalled));
+        } else {
+            $printer->say("");
+        }
+
+        $cUninstalled = count($uninstalled);
+        $printer->say("$cUninstalled module(s) couldn't be imported", false);
+        if ($cUninstalled > 0) {
+            $printer->say(": " . implode(", ", $uninstalled));
+        } else {
+            $printer->say("");
+        }
+
+    }
+
+    function printInstallSummary(InstallSummaryInterface $summary, ProgramPrinterInterface $printer, $isUninstall = false)
+    {
+
+        $word = (true === $isUninstall) ? "uninstall" : "install";
+
+        //--------------------------------------------
+        // PRINT SUMMARY
+        //--------------------------------------------
+        $successfull = $summary->isSuccessful();
+        if (true === $successfull) {
+            $printer->success("The $word was successful");
+        } else {
+            $printer->error("The $word was not successful");
+        }
+        $alreadyInstalled = $summary->getAlreadyImportedModules();
+        $reinstalled = $summary->getReimportedModules();
+        $uninstalled = $summary->getNotImportedModules();
+
+
+        $cAlready = count($alreadyInstalled);
+        $printer->say("$cAlready module(s) were already imported", false);
+        if ($cAlready > 0) {
+            $printer->say(": " . implode(", ", $alreadyInstalled));
+        } else {
+            $printer->say("");
+        }
+
+        $cReinstalled = count($reinstalled);
+        $printer->say("$cReinstalled module(s) have been (re-)imported", false);
+        if ($cReinstalled > 0) {
+            $printer->say(": " . implode(", ", $reinstalled));
+        } else {
+            $printer->say("");
+        }
+
+        $cUninstalled = count($uninstalled);
+        $printer->say("$cUninstalled module(s) couldn't be imported", false);
+        if ($cUninstalled > 0) {
+            $printer->say(": " . implode(", ", $uninstalled));
+        } else {
+            $printer->say("");
+        }
+
+        //--------------------------------------------
+        //
+        //--------------------------------------------
+        $alreadyInstalled = $summary->getAlreadyInstalledModules();
+        $newlyInstalled = $summary->getNewlyInstalledModules();
+        $uninstalled = $summary->getUninstalledModules();
+        $successfullyUninstalled = $summary->getSuccessfullyUninstalledModules();
+
+
+        $cAlready = count($alreadyInstalled);
+        $printer->say("$cAlready module(s) were already installed", false);
+        if ($cAlready > 0) {
+            $printer->say(": " . implode(", ", $alreadyInstalled));
+        } else {
+            $printer->say("");
+        }
+
+        $cReinstalled = count($newlyInstalled);
+        $printer->say("$cReinstalled module(s) have been newly installed", false);
+        if ($cReinstalled > 0) {
+            $printer->say(": " . implode(", ", $newlyInstalled));
+        } else {
+            $printer->say("");
+        }
+
+        $cUninstalled = count($uninstalled);
+        $printer->say("$cUninstalled module(s) couldn't be installed", false);
+        if ($cUninstalled > 0) {
+            $printer->say(": " . implode(", ", $uninstalled));
+        } else {
+            $printer->say("");
+        }
+
+        $cUninstalled = count($successfullyUninstalled);
+        $printer->say("$cUninstalled module(s) have been successfully uninstalled", false);
+        if ($cUninstalled > 0) {
+            $printer->say(": " . implode(", ", $successfullyUninstalled));
+        } else {
+            $printer->say("");
+        }
+
+
+    }
+
+
+    $appDir = getcwd();
+    //--------------------------------------------
+    // AUTOLOAD CODE
+    //--------------------------------------------
+    $_SERVER['APPLICATION_ENVIRONMENT'] = "dev"; // hack environment here depending on your prefs
+    $file = $appDir . '/boot.php';
+    if (file_exists($file)) {
+        require_once $file;
+        ButineurAutoloader::getInst()
+            ->addLocation(__DIR__ . "/pprivate");
+
+    }
+
+
+    $printer = ProgramPrinter::create();
+
+
+    try {
+
+        $modulesRelativePath = 'class-modules';
+
+        $force = false;
+        if (array_key_exists(2, $argv) && '-f' === $argv[2]) {
+            $force = true;
+            unset($argv[2]);
+            $argv = array_merge($argv);
+        }
+
+        //--------------------------------------------
+        // IMPORT
+        // INSTALL
+        // UNINSTALL
+        //--------------------------------------------
+        if (array_key_exists(1, $argv) &&
+            ('import' === $argv[1] || 'install' === $argv[1] || 'uninstall' === $argv[1])
+            && array_key_exists(2, $argv)
+        ) {
+
+
+            $isImport = ('import' === $argv[1]);
+            $isUninstall = ('uninstall' === $argv[1]);
+
+
+            $importerId = null;
+            $moduleName = $argv[2];
+
+            if (array_key_exists(3, $argv)) {
+                $importerId = $argv[3];
+            }
+
+
+            $modulesDir = $appDir . "/" . $modulesRelativePath;
+
+            if (false === file_exists($modulesDir)) {
+                @mkdir($modulesDir, 0777, true);
+            }
+
+
+            if (file_exists($modulesDir)) {
+
+                $summary = null;
+                $kamille = KamilleNaiveImporter::create()
+                    ->setProgramPrinter($printer)
+                    ->forceImport($force)
+                    ->setAppDir($appDir)
+                    ->addImporter(KamilleWidgetsKamilleImporter::create())
+                    ->setModulesRelativePath($modulesRelativePath);
+
+
+                if (true === $isImport) {
+                    $summary = $kamille->import($moduleName, $importerId);
+                    printImportSummary($summary, $printer);
+                } else {
+                    if (true === $isUninstall) {
+                        $summary = $kamille->uninstall($moduleName, $importerId);
+                        printInstallSummary($summary, $printer, true);
+                    } else {
+                        $summary = $kamille->install($moduleName, $importerId);
+                        printInstallSummary($summary, $printer);
+                    }
+                }
+            } else {
+                $printer->error("Cannot create the modules directory: $modulesDir");
+            }
+
+        }
+        //--------------------------------------------
+        // LIST
+        //--------------------------------------------
+        elseif (array_key_exists(1, $argv) && 'list' === $argv[1]) {
+            $importerId = null;
+            if (array_key_exists(2, $argv)) {
+                $importerId = $argv[2];
+            }
+            KamilleNaiveImporter::create()
+                ->setAppDir($appDir)
+                ->setProgramPrinter($printer)
+                ->addImporter(KamilleWidgetsKamilleImporter::create())
+                ->listAvailableModules($importerId);
+
+        } elseif (array_key_exists(1, $argv) && 'listimported' === $argv[1]) {
+            KamilleNaiveImporter::create()
+                ->setAppDir($appDir)
+                ->setProgramPrinter($printer)
+                ->addImporter(KamilleWidgetsKamilleImporter::create())
+                ->listImportedModules();
+
+        } elseif (array_key_exists(1, $argv) && 'listinstalled' === $argv[1]) {
+            KamilleNaiveImporter::create()
+                ->setAppDir($appDir)
+                ->setProgramPrinter($printer)
+                ->addImporter(KamilleWidgetsKamilleImporter::create())
+                ->listInstalledModules();
+
+        }
+        //--------------------------------------------
+        // SET/GET MODULES DIRECTORY RELATIVE PATH
+        //--------------------------------------------
+        elseif (array_key_exists(1, $argv) && 'setmodulesrelpath' === $argv[1] && array_key_exists(2, $argv)) {
+            $path = $argv[2];
+            if (true === ProgramStorage::create()->setModulesDirRelativePath($path)) {
+                $printer->success("modules directory relative path successfully set");
+            } else {
+                $printer->error("modules directory relative path couldn't be set");
+            }
+
+        } elseif (array_key_exists(1, $argv) && 'getmodulesrelpath' === $argv[1]) {
+            if (false !== ($path = ProgramStorage::create()->getModulesDirRelativePath())) {
+                $printer->say($path);
+            } else {
+                $printer->error("modules directory relative path couldn't be retrieved. Please use the setmodulesrelpath command first");
+            }
+
+        }
+        //--------------------------------------------
+        // CLEAN
+        //--------------------------------------------
+        elseif (array_key_exists(1, $argv) &&
+            (
+                'clean' === $argv[1] ||
+                'cleanr' === $argv[1]
+            )
+        ) {
+
+
+            $recursive = ('cleanr' === $argv[1]);
+
+            $appDir = getcwd();
+            $modulesDir = $appDir . "/" . $modulesRelativePath;
+
+            if (is_dir($modulesDir)) {
+                CleanerTool::create()->setPrinter($printer)->clean($modulesDir, $recursive);
+                $printer->success('The following directory has been successfully cleaned: ' . $modulesDir . '');
+            } else {
+                $printer->error("The application modules directory doesn't exist. Please create it first, then re-execute this command. Expected path: $modulesDir");
+            }
+        } else {
+            $printer->say("");
+            $printer->error("Invalid arguments");
+            $printer->help();
+        }
+
+    } catch (UserErrorException $e) {
+        $printer->error($e->getMessage());
+    }
+}
+
+
+

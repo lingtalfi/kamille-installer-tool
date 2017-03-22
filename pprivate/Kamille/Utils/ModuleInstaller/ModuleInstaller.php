@@ -80,6 +80,11 @@ class ModuleInstaller implements StepTrackerAwareInterface
         return $this;
     }
 
+    public function getStepTracker()
+    {
+        return $this->stepTracker;
+    }
+
 
 
 

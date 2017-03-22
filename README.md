@@ -75,10 +75,10 @@ Below is the synopsis (from the help of the command)
 ```txt
 Usage
 -------
-kamille import {module} {importerId}?                    # import one module and dependencies, skip already existing module(s)/dependencies
-kamille import -f {module} {importerId}?                 # import one module and dependencies, replace already existing module(s)/dependencies
-kamille install {module} {importerId}?                   # call the install method of the given module (it fails if the module is not imported already)
-kamille install -f {module} {importerId}?                # import and install one module and all its dependencies 
+kamille import {module} {importerId}?                    # import a module and its dependencies, skip already existing module(s)/dependencies
+kamille import -f {module} {importerId}?                 # import a module and its dependencies, replace already existing module(s)/dependencies
+kamille install {module} {importerId}?                   # install a module and its dependencies, skip already existing module(s)/dependencies
+kamille install -f {module} {importerId}?                # install a module and its dependencies, replace already existing module(s)/dependencies 
 kamille uninstall {module} {importerId}?                 # call the uninstall method of the given module 
 kamille list {importerId}?                               # list available modules
 kamille listimported                                     # list imported modules

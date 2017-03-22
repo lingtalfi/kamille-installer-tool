@@ -9,6 +9,7 @@ use Kamille\Utils\ModuleInstaller\ModuleInstaller;
 use Kamille\Utils\ModuleInstaller\ModuleInstallerInterface;
 use Kamille\Utils\StepTracker\ConsoleStepTracker;
 use Kamille\Utils\StepTracker\StepTrackerAwareInterface;
+use KamilleNaiveImporter\Exception\KamilleNaiveImporterException;
 use KamilleNaiveImporter\Importer\KamilleImporterInterface;
 use KamilleNaiveImporter\InstallSummary\InstallSummary;
 use KamilleNaiveImporter\InstallSummary\InstallSummaryInterface;
@@ -112,28 +113,16 @@ class KamilleNaiveImporter
      * @return ImportSummaryInterface
      * @throws UserErrorException
      */
-    public function import($moduleName, $importerId = null)
+    public function import($moduleName, $importerId = null, $force = null)
     {
         if (null === $this->appDir) {
             throw new UserErrorException("appDir not set");
         }
-
         $modulesDir = $this->appDir . "/" . $this->modulesRelativePath;
-
-        foreach ($this->importers as $importer) {
-            if (
-                null === $importerId ||
-                (null !== $importerId && $importerId === $importer->getImporterId())
-            ) {
-                if (true === $importer->canImport($moduleName)) {
-                    $summary = $importer->import($modulesDir, $moduleName, $this->_forceImport);
-                    return $summary;
-                }
-            }
+        if (null === $force) {
+            $force = $this->_forceImport;
         }
-        $summary = ImportSummary::create();
-        $summary->setSuccessful(false);
-        $summary->setUninstalledModules([$moduleName]);
+        $summary = $this->getImporter($moduleName, $importerId)->import($modulesDir, $moduleName, $force);
         return $summary;
     }
 
@@ -144,25 +133,18 @@ class KamilleNaiveImporter
             throw new UserErrorException("appDir not set");
         }
         $force = $this->_forceImport;
-        if (false === $force) {
-            $availableModules = $this->getAvailableModules($importerId);
-            if (in_array($moduleName, $availableModules, true)) {
-                $listImported = $this->getImportedModules();
-                if (in_array($moduleName, $listImported, true)) {
-                    $summary = $this->installModule($moduleName);
-                } else {
-                    throw new UserErrorException("This module is not imported: $moduleName. Please import it first (or use the -f flag with the install command)");
-                }
-            } else {
-                throw new UserErrorException("This module is not available with importer $importerId");
-            }
-        } else {
-            $importSummary = $this->import($moduleName, $importerId);
+        $availableModules = $this->getAvailableModules($importerId);
+
+        if (in_array($moduleName, $availableModules, true)) {
+
+            $importer = $this->getImporter($moduleName, $importerId);
+            $importSummary = $importer->import($moduleName, $importerId, $force);
+
             if (true === $importSummary->isSuccessful()) {
+                $tree = $importer->getDependencyTree($moduleName);
                 $summaries = [];
-                $list = $importSummary->getReimportedModules();
-                foreach ($list as $item) {
-                    $summaries[] = $this->installModule($item);
+                foreach ($tree as $module) {
+                    $summaries[] = $this->installModule($module);
                 }
                 $summary = $this->mergeInstallSummaries($summaries);
                 $summary = $this->mergeImportSummaryIntoInstallSummary($importSummary, $summary);
@@ -172,6 +154,9 @@ class KamilleNaiveImporter
                 $summary->setNotImportedModules([$moduleName]);
                 $summary->addUninstalledModule($moduleName);
             }
+
+        } else {
+            throw new UserErrorException("This module is not available with importer $importerId");
         }
         return $summary;
     }
@@ -387,7 +372,6 @@ class KamilleNaiveImporter
     {
 
 
-
         $moduleInstaller = $this->getModuleInstaller();
         if ($moduleInstaller instanceof StepTrackerAwareInterface) {
             $moduleInstaller->setStepTracker($this->getStepTracker());
@@ -504,5 +488,23 @@ class KamilleNaiveImporter
         return $this->moduleInstaller;
     }
 
+
+    /**
+     * @return KamilleImporterInterface
+     */
+    private function getImporter($moduleName, $importerId = null)
+    {
+        foreach ($this->importers as $importer) {
+            if (
+                null === $importerId ||
+                (null !== $importerId && $importerId === $importer->getImporterId())
+            ) {
+                if (true === $importer->canImport($moduleName)) {
+                    return $importer;
+                }
+            }
+        }
+        throw new KamilleNaiveImporterException("No importer is able to import the module: $moduleName, with importerId=$importerId");
+    }
 
 }

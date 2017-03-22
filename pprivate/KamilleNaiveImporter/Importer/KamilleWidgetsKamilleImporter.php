@@ -65,21 +65,22 @@ class KamilleWidgetsKamilleImporter implements KamilleImporterInterface
 
                 $moduleDir = $modulesDir . "/" . $module;
 
+
                 if (file_exists($moduleDir)) {
                     if (true === $force) {
                         FileSystemTool::remove($moduleDir);
                     } else {
-                        $summary->addAlreadyImportedModule($moduleName);
+                        $summary->addAlreadyImportedModule($module);
                         continue;
                     }
                 }
-                $cmd = 'cd "' . $modulesDir . '"; git clone https://github.com/KamilleModules/' . $moduleName . '.git';
+                $cmd = 'cd "' . $modulesDir . '"; git clone https://github.com/KamilleModules/' . $module . '.git';
                 exec($cmd, $output, $returnVar);
                 if (0 === $returnVar) {
-                    $summary->addReimportedModule($moduleName);
+                    $summary->addReimportedModule($module);
                 } else {
                     $success = false;
-                    $summary->addNotImportedModule($moduleName);
+                    $summary->addNotImportedModule($module);
                 }
             }
         }
