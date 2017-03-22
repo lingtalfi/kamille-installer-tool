@@ -27,6 +27,9 @@ class KamilleNaiveImporter
     private $appDir;
     private $modulesDirRelPath;
 
+    //
+    private $hint;
+
 
     public function __construct()
     {
@@ -109,36 +112,55 @@ class KamilleNaiveImporter
 
     public function import($moduleName, $modulesDir, $force = false)
     {
+        $this->hint = "import";
+        return $this->doImport($moduleName, $modulesDir, $force);
+    }
+
+    public function doImport($moduleName, $modulesDir, $force = false)
+    {
         $output = $this->getOutput();
         $hasAnError = false;
         $prefix = $this->getPrefix();
-        $output->info($prefix . "Preparing import for module $moduleName");
+        $output->debug($prefix . "Preparing import for module $moduleName");
 
         if (false !== ($importer = $this->getImporter($moduleName))) {
 
             $moduleName = $this->getCleanModuleName($moduleName);
             $importerName = $importer->getFullName();
-            $output->info($prefix . "Importer $importerName has been chosen for importing module $moduleName.");
+            $output->debug($prefix . "Importer $importerName has been chosen for importing module $moduleName.");
 
             $tree = $importer->getDependencyTree($moduleName);
 
-            $output->info($prefix . "Creating dependency tree for module $moduleName:");
+            $output->info($prefix . "Collecting dependency tree for module $moduleName:");
             foreach ($tree as $module) {
-                $output->info("- $module");
+                $output->notice("- $module");
             }
 
 
             if (true === $force) {
-                $output->info($prefix . "Removing all modules (-f flag)");
+                $output->debug($prefix . "Removing all modules (-f flag)");
                 foreach ($tree as $module) {
                     $moduleDir = $modulesDir . "/" . $module;
                     FileSystemTool::remove($moduleDir);
                 }
             }
 
+            $levelInfo = "info";
+            $levelSuccess = "success";
+            if ('import' !== $this->hint) {
+                $levelInfo = "debug";
+                $levelSuccess = "debug";
+            }
+
             foreach ($tree as $module) {
-                if (true === $importer->import($module, $modulesDir)) {
-                    $output->success($prefix . "Module $module has been successfully imported");
+
+                $output->$levelInfo($prefix . "Importing module $module");
+                $moduleDir = $modulesDir . "/$module";
+
+                if (file_exists($moduleDir)) {
+                    $output->$levelSuccess($prefix . "Module $module is already imported");
+                } elseif (true === $importer->import($module, $modulesDir)) {
+                    $output->$levelSuccess($prefix . "Module $module has been imported");
                 } else {
                     $output->error($prefix . "Failed importing module $module");
                     $hasAnError = true;
@@ -154,11 +176,12 @@ class KamilleNaiveImporter
 
     public function install($moduleName, $modulesDir, $force = false)
     {
+        $this->hint = "install";
         $output = $this->getOutput();
         $prefix = $this->getPrefix();
-        $output->info($prefix . "Preparing install for module $moduleName");
+        $output->debug($prefix . "Preparing install for module $moduleName");
 
-        if (true === $this->import($moduleName, $modulesDir, $force)) {
+        if (true === $this->doImport($moduleName, $modulesDir, $force)) {
 
             if (false !== ($importer = $this->getImporter($moduleName))) {
                 // reinstall every module that is not installed already
@@ -170,12 +193,17 @@ class KamilleNaiveImporter
 
                 $installed = $this->getInstalledModulesList();
                 foreach ($tree as $module) {
+
+
+                    $output->info($prefix . "Installing module $module");
+
+
                     if (false === $force && in_array($module, $installed, true)) {
-                        $output->info($prefix . "Module $module is already installed");
+                        $output->success($prefix . "Module $module is already installed");
                         continue;
                     } else {
-                        $output->info($prefix . "Installing module $module");
                         $this->installModule($module, $modulesDir);
+                        $output->success($prefix . "Module $module has been installed");
                     }
                 }
             }
@@ -193,6 +221,8 @@ class KamilleNaiveImporter
         if ($oClass instanceof ProgramOutputAwareInterface) {
             $oClass->setProgramOutput($this->getOutput());
         }
+
+        $output->info($prefix . "Uninstalling module $moduleName");
         $oClass->uninstall();
 
         $output->success($prefix . "Module $moduleName has been uninstalled");

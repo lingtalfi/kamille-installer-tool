@@ -91,6 +91,26 @@ HELP;
             $argv = array_merge($argv);
         }
 
+        // verbose?
+        $verbose = false;
+        foreach ($argv as $k => $arg) {
+            if ('-v' === $arg) {
+                $verbose = true;
+                unset($argv[$k]);
+                $argv = array_merge($argv);
+            }
+        }
+
+
+
+//        $verbose = true;
+        if (false === $verbose) {
+            $output->setDampened(["debug"]);
+        }
+
+
+
+
 
         $kamille = KamilleNaiveImporter::create()
             ->setOutput($output)

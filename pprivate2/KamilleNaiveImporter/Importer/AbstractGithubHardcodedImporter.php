@@ -4,12 +4,12 @@
 namespace KamilleNaiveImporter\Importer;
 
 
-use KamilleNaiveImporter\Log\ProgramLog;
 
 abstract class AbstractGithubHardcodedImporter extends AbstractHardcodedImporter
 {
 
     private $githubRepoName;
+
 
 
     public function __construct()
@@ -35,13 +35,6 @@ abstract class AbstractGithubHardcodedImporter extends AbstractHardcodedImporter
     {
         $output = [];
         $returnVar = 0;
-
-        $moduleDir = $modulesDir . "/$moduleName";
-
-        if (file_exists($moduleDir)) {
-            ProgramLog::info("Module $moduleName is already imported");
-            return true;
-        }
         $cmd = 'cd "' . $modulesDir . '"; git clone https://github.com/' . $this->githubRepoName . '/' . $moduleName . '.git';
         exec($cmd, $output, $returnVar);
 
