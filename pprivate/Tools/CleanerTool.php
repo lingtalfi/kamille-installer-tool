@@ -5,7 +5,6 @@ namespace Tools;
 
 
 use Bat\FileSystemTool;
-use Kamille\Utils\Exception\UserErrorException;
 
 class CleanerTool
 {

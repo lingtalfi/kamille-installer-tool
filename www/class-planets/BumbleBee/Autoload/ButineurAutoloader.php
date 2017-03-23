@@ -13,7 +13,7 @@ namespace BumbleBee\Autoload;
  *
  *
  */
-class ButineurAutoloader extends BeeAutoloader
+class ButineurAutoloader extends BeeAutoLoader
 {
 
     private static $inst = null;

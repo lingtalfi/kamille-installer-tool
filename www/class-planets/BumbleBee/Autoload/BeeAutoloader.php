@@ -9,7 +9,7 @@ namespace BumbleBee\Autoload;
  * 2015-04-24
  *
  */
-class BeeAutoloader
+class BeeAutoLoader
 {
 
     protected $plugins;

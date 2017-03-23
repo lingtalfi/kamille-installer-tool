@@ -5,7 +5,6 @@ namespace KamilleNaiveImporter;
 
 
 use Bat\FileSystemTool;
-use Kamille\Module\ModuleInterface;
 use KamilleNaiveImporter\Importer\ImporterInterface;
 use Output\ProgramOutput;
 use Output\ProgramOutputAwareInterface;
