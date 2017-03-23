@@ -5,6 +5,11 @@ use BumbleBee\Autoload\ButineurAutoloader;
 use Packer\Packer;
 
 
+/**
+ * That's my private script to generate the packed output (packed.txt at the root of this app).
+ * I call this script via a webserver.
+ */
+
 ini_set("display_errors", "1");
 
 require_once __DIR__ . '/class-planets/BumbleBee/Autoload/BeeAutoloader.php';

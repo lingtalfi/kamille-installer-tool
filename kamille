@@ -2130,9 +2130,13 @@ namespace {
     $file = $appDir . '/boot.php';
     if (file_exists($file)) {
         require_once $file;
-        ButineurAutoloader::getInst()
-            ->addLocation(__DIR__ . "/pprivate");
 
+        /**
+         * Uncomment the code below in test mode (that should be me only),
+         * and then delete the "packed" code above the "BELOW THIS LINE, EDIT MANUALLY".
+         */
+//        ButineurAutoloader::getInst()
+//            ->addLocation(__DIR__ . "/pprivate");
     }
 
     $output = ProgramOutput::create();
