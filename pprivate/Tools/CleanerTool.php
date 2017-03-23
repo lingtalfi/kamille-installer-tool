@@ -52,7 +52,7 @@ class CleanerTool
                 $this->cleanDir($d, $recursive);
             }
         } else {
-            throw new UserErrorException("target planets directory does not exist: $targetDir");
+            throw new \RuntimeException("target planets directory does not exist: $targetDir");
         }
     }
 
