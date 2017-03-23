@@ -75,36 +75,41 @@ Below is the synopsis (from the help of the command)
 ```txt
 Usage
 -------
-kamille import {module} {importerId}?                    # import a module and its dependencies, skip already existing module(s)/dependencies
-kamille import -f {module} {importerId}?                 # import a module and its dependencies, replace already existing module(s)/dependencies
-kamille install {module} {importerId}?                   # install a module and its dependencies, skip already existing module(s)/dependencies
-kamille install -f {module} {importerId}?                # install a module and its dependencies, replace already existing module(s)/dependencies 
-kamille uninstall {module} {importerId}?                 # call the uninstall method of the given module 
-kamille list {importerId}?                               # list available modules
-kamille listimported                                     # list imported modules
-kamille listinstalled                                    # list installed modules
-kamille setmodulesrelpath                                # set the relative path to the modules directory (from the app directory)
-kamille getmodulesrelpath                                # get the relative path to the modules directory (from the app directory)
-kamille clean                                            # removes the .git, .gitignore, .idea and .DS_Store files at the top level of your modules' directories
-kamille cleanr                                           # removes the .git, .gitignore, .idea and .DS_Store files in your modules directories, recursively 
+kamille import {module}                     # import a module and its dependencies, skip already existing module(s)/dependencies
+kamille import -f {module}                  # import a module and its dependencies, replace already existing module(s)/dependencies
+kamille install {module}                    # install a module and its dependencies, will import if necessary, skip already existing module(s)/dependencies
+kamille install -f {module}                 # install a module and its dependencies, will import if necessary, replace already existing module(s)/dependencies 
+kamille uninstall {module}                  # call the uninstall method of the given module 
+kamille list {importerAlias}?               # list available modules
+kamille listd {importerAlias}?              # list available modules with their description if any
+kamille listimported                        # list imported modules
+kamille listinstalled                       # list installed modules
+kamille search {importerAlias}?             # search through available modules names
+kamille searchd {importerAlias}?            # search through available modules names and/or description
+kamille clean                               # removes the .git, .gitignore, .idea and .DS_Store files at the top level of your modules' directories
+kamille cleanr                              # removes the .git, .gitignore, .idea and .DS_Store files in your modules directories, recursively 
 
 For instance: 
     kamille import Connexion
-    kamille import Connexion KamilleWidgets
+    kamille import km.Connexion 
     kamille import -f Connexion 
-    kamille import -f Connexion KamilleWidgets
+    kamille import -f km.Connexion 
     kamille install Connexion 
-    kamille install Connexion KamilleWidgets 
+    kamille install km.Connexion  
     kamille install -f Connexion 
-    kamille install -f Connexion KamilleWidgets
+    kamille install -f km.Connexion 
     kamille uninstall Connexion 
-    kamille uninstall Connexion KamilleWidgets
+    kamille uninstall km.Connexion
     kamille list 
-    kamille list KamilleWidgets
+    kamille list km
+    kamille listd 
+    kamille listd km
     kamille listimported 
-    kamille listinstalled                      
-    kamille setmodulesrelpath
-    kamille getmodulesrelpath
+    kamille listinstalled    
+    kamille search ling     
+    kamille search ling km    
+    kamille searchd kaminos
+    kamille searchd kaminos km
     kamille clean
     kamille cleanr
     
@@ -114,6 +119,7 @@ Options
 -f: when used with the import keyword, force overwriting of existing modules and dependencies. If not set, the Importer will skip existing planets/dependencies.
     when used with the install keyword, force the importing (in force mode too) of the modules
     
+
 ```
 
 

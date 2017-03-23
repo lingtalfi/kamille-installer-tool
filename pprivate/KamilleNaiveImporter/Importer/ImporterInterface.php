@@ -50,4 +50,6 @@ interface ImporterInterface
      * @return array, list of modules this importer is capable of fetching
      */
     public function getAvailableModules();
+
+    public function getModuleDescription($moduleName);
 }

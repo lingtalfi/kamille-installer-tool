@@ -5,12 +5,10 @@ namespace Tools;
 
 
 use Bat\FileSystemTool;
-use ProgramPrinter\ProgramPrinter;
-use ProgramPrinter\ProgramPrinterInterface;
+use Kamille\Utils\Exception\UserErrorException;
 
 class CleanerTool
 {
-    private $printer;
     private $filesToBeCleaned;
     private $dirsToBeCleaned;
 
@@ -44,17 +42,8 @@ class CleanerTool
         return $this;
     }
 
-
-    public function setPrinter(ProgramPrinterInterface $printer)
-    {
-        $this->printer = $printer;
-        return $this;
-    }
-
-
     public function clean($targetDir, $recursive = false)
     {
-        $printer = $this->getPrinter();
         if (file_exists($targetDir)) {
 
             $modules = $this->getModulesNames($targetDir);
@@ -63,7 +52,7 @@ class CleanerTool
                 $this->cleanDir($d, $recursive);
             }
         } else {
-            $printer->error("target planets directory does not exist: $targetDir");
+            throw new UserErrorException("target planets directory does not exist: $targetDir");
         }
     }
 
@@ -110,13 +99,5 @@ class CleanerTool
             }
             return true;
         });
-    }
-
-    private function getPrinter()
-    {
-        if (null === $this->printer) {
-            $this->printer = ProgramPrinter::create();
-        }
-        return $this->printer;
     }
 }
