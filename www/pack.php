@@ -23,12 +23,12 @@ $d = __DIR__ . "/../pprivate";
 $packer = new Packer();
 $c = $packer->addDroppedNamespace("BumbleBee/Autoload")->pack($d);
 
-$destFile = __DIR__ . "/../packed.txt";
-file_put_contents($destFile, $c);
+$script = file_get_contents(__DIR__ . "/assets/kamilletpl.php");
+$script = str_replace('//replace', $c, $script);
+
+
+$destFile = __DIR__ . "/../kamille";
+file_put_contents($destFile, $script);
 
 echo "ok";
-
-
-
-
 

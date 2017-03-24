@@ -5,6 +5,7 @@ namespace KamilleNaiveImporter;
 
 
 use Bat\FileSystemTool;
+use Kamille\Module\ModuleInterface;
 use KamilleNaiveImporter\Importer\ImporterInterface;
 use Output\ProgramOutput;
 use Output\ProgramOutputAwareInterface;
@@ -309,7 +310,7 @@ class KamilleNaiveImporter
             $moduleFile = $moduleDir . "/$moduleName" . "Module.php";
             if (file_exists($moduleFile)) {
                 require_once $moduleFile;
-                $className = $moduleName . '\\' . $moduleName . "Module";
+                $className = "Module\\" . $moduleName . '\\' . $moduleName . "Module";
                 $oClass = new $className();
                 if ($oClass instanceof ModuleInterface) {
                     return $oClass;
