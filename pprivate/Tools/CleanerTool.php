@@ -10,6 +10,7 @@ class CleanerTool
 {
     private $filesToBeCleaned;
     private $dirsToBeCleaned;
+    private $useSymlinks;
 
 
     public function __construct()
@@ -22,6 +23,7 @@ class CleanerTool
             '.idea',
             '.git',
         ];
+        $this->useSymlinks = false;
     }
 
     public static function create()
@@ -45,13 +47,13 @@ class CleanerTool
     {
         if (file_exists($targetDir)) {
 
-            $modules = $this->getModulesNames($targetDir);
-            foreach ($modules as $module) {
-                $d = $targetDir . "/" . $module;
+            $items = $this->getModulesNames($targetDir);
+            foreach ($items as $item) {
+                $d = $targetDir . "/" . $item;
                 $this->cleanDir($d, $recursive);
             }
         } else {
-            throw new \RuntimeException("target planets directory does not exist: $targetDir");
+            throw new \RuntimeException("target directory does not exist: $targetDir");
         }
     }
 
@@ -64,12 +66,18 @@ class CleanerTool
         foreach ($this->filesToBeCleaned as $_f) {
             $f = $dir . "/$_f";
             if (file_exists($f)) {
+                if (false === $this->useSymlinks && is_link($f)) {
+                    continue;
+                }
                 unlink($f);
             }
         }
         foreach ($this->dirsToBeCleaned as $_f) {
             $f = $dir . "/$_f";
             if (is_dir($f)) {
+                if (false === $this->useSymlinks && is_link($f)) {
+                    continue;
+                }
                 FileSystemTool::remove($f);
             }
         }
@@ -80,6 +88,9 @@ class CleanerTool
                 if ('.' !== $f && '..' !== $f) {
                     $file = $dir . "/" . $f;
                     if (is_dir($file)) {
+                        if (false === $this->useSymlinks && is_link($file)) {
+                            continue;
+                        }
                         $this->cleanDir($file, $recursive);
                     }
                 }

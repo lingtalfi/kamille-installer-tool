@@ -43,6 +43,5 @@ abstract class AbstractGithubHardcodedImporter extends AbstractHardcodedImporter
         } else {
             return false;
         }
-
     }
 }

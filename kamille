@@ -4,46 +4,32 @@
 namespace Output {
 
 
-
-
-
-
     interface OutputInterface
     {
         public function write($msg, $lbr = true);
     }
 
 
-
-
-
-
-
     interface ProgramOutputInterface extends OutputInterface
     {
         public function success($msg, $lbr = true);
+
         public function error($msg, $lbr = true);
+
         public function warn($msg, $lbr = true);
+
         public function info($msg, $lbr = true);
+
         public function notice($msg, $lbr = true);
+
         public function debug($msg, $lbr = true);
     }
-
-
-
-
-
 
 
     interface ProgramOutputAwareInterface
     {
         public function setProgramOutput(ProgramOutputInterface $output);
     }
-
-
-
-
-
 
 
     class Output implements OutputInterface
@@ -57,11 +43,6 @@ namespace Output {
         }
 
     }
-
-
-
-
-
 
 
     /**
@@ -179,10 +160,6 @@ namespace Output {
 namespace KamilleNaiveImporter\Importer {
 
 
-
-
-
-
     interface ImporterInterface
     {
 
@@ -234,11 +211,6 @@ namespace KamilleNaiveImporter\Importer {
     }
 
 
-
-
-
-
-
     abstract class AbstractImporter implements ImporterInterface
     {
 
@@ -273,11 +245,6 @@ namespace KamilleNaiveImporter\Importer {
 
 
     }
-
-
-
-
-
 
 
     abstract class AbstractHardcodedImporter extends AbstractImporter
@@ -350,17 +317,10 @@ namespace KamilleNaiveImporter\Importer {
     }
 
 
-
-
-
-
-
-
     abstract class AbstractGithubHardcodedImporter extends AbstractHardcodedImporter
     {
 
         private $githubRepoName;
-
 
 
         public function __construct()
@@ -397,11 +357,6 @@ namespace KamilleNaiveImporter\Importer {
 
         }
     }
-
-
-
-
-
 
 
     class KamilleModulesImporter extends AbstractGithubHardcodedImporter
@@ -449,8 +404,6 @@ EEE
 namespace CopyDir\Exception {
 
 
-
-
     /*
      * LingTalfi 2015-10-19
      */
@@ -475,8 +428,6 @@ namespace CopyDir\Exception {
 // ------------------------------
 
 namespace CopyDir {
-
-
 
 
     /*
@@ -646,14 +597,12 @@ namespace CopyDir {
                                                         $isProcessedAsLink = true;
                                                         $this->copyFileLink($file, $targetFile);
                                                     }
-                                                }
-                                                elseif (is_dir($file)) {
+                                                } elseif (is_dir($file)) {
                                                     if (false === $this->followDirLinks) {
                                                         $isProcessedAsLink = true;
                                                         $this->copyDirLink($file, $targetFile);
                                                     }
-                                                }
-                                                else {
+                                                } else {
                                                     // broken link
                                                     $isProcessedAsLink = true;
                                                     $this->copyBrokenLink($file, $targetFile);
@@ -664,26 +613,22 @@ namespace CopyDir {
                                             if (false === $isProcessedAsLink) {
                                                 if (is_file($file)) {
                                                     $this->copyFile($file, $targetFile);
-                                                }
-                                                elseif (is_dir($file)) {
+                                                } elseif (is_dir($file)) {
                                                     $this->copyDir($file, $targetFile, true);
                                                 }
                                             }
                                         }
                                     }
                                 }
-                            }
-                            else {
+                            } else {
                                 $this->error("Target dir must be writable: $target");
                             }
                         }
                     }
-                }
-                else {
+                } else {
                     $this->error("src is not readable: $src");
                 }
-            }
-            else {
+            } else {
                 $this->error("src is not a dir: $src");
             }
 
@@ -812,8 +757,7 @@ namespace CopyDir {
                         }
                         break;
                 }
-            }
-            else {
+            } else {
                 $errMsg = "Couldn't create $type $target, because an entry with the same name already existed";
                 $this->onConflict($src, $target, $errMsg, $callback, $type);
                 if ($errMsg) {
@@ -847,9 +791,6 @@ namespace CopyDir {
             $this->errors[] = $m;
         }
     }
-
-
-
 
 
     /*
@@ -919,8 +860,7 @@ namespace CopyDir {
         {
             if (is_link($src) && false === is_file($src) && false === is_dir($src)) {
                 // broken link case, we don't need to chmod it
-            }
-            else {
+            } else {
                 if (true === $this->applyPerms) {
                     $octal = substr(sprintf('%o', fileperms($src)), -4);
                     if (false === chmod($target, octdec($octal))) {
@@ -943,12 +883,10 @@ namespace CopyDir {
                                 $this->error("Could not chgrp for $target with owner=$ownerGroup");
                             }
 
-                        }
-                        else {
+                        } else {
                             $this->error("Couldn't access group owner information for $src");
                         }
-                    }
-                    else {
+                    } else {
                         $this->error("Couldn't access file owner information for $src");
                     }
                 }
@@ -963,8 +901,6 @@ namespace CopyDir {
 // ------------------------------
 
 namespace Bat {
-
-
 
 
     /*
@@ -1277,8 +1213,6 @@ namespace Bat {
         }
 
 
-
-
         /**
          *
          * Works like php's native touch function, except that intermediate dirs are created if necessary,
@@ -1359,10 +1293,6 @@ namespace Bat {
 // ------------------------------
 
 namespace KamilleNaiveImporter {
-
-
-
-
 
 
     use Bat\FileSystemTool;
@@ -1770,10 +1700,6 @@ namespace KamilleNaiveImporter {
 namespace Tools {
 
 
-
-
-
-
     use Bat\FileSystemTool;
 
     class CleanerTool
@@ -1877,9 +1803,6 @@ namespace Tools {
 namespace KamilleNaiveImporter\Log {
 
 
-
-
-
     /**
      * Foreground
      * ----------------
@@ -1980,10 +1903,6 @@ namespace KamilleNaiveImporter\Log {
 namespace KamilleNaiveImporter\Exception {
 
 
-
-
-
-
     class KamilleNaiveImporterException extends \Exception
     {
 
@@ -1995,12 +1914,8 @@ namespace KamilleNaiveImporter\Exception {
 namespace ConsoleTool\Exception {
 
 
-
-
-
-
-
-    class ConsoleToolException extends \Exception{
+    class ConsoleToolException extends \Exception
+    {
 
     }
 
@@ -2008,10 +1923,6 @@ namespace ConsoleTool\Exception {
 // ------------------------------
 
 namespace ConsoleTool {
-
-
-
-
 
 
     use ConsoleTool\Exception\ConsoleToolException;
@@ -2095,9 +2006,6 @@ namespace ConsoleTool {
 
 }
 // ------------------------------
-
-
-
 
 
 //--------------------------------------------
@@ -2392,14 +2300,19 @@ HELP;
 
             $recursive = ('cleanr' === $argv[1]);
             $appDir = getcwd();
-            $modulesDir = $appDir . "/" . $modulesRelativePath;
 
-            if (is_dir($modulesDir)) {
-                CleanerTool::create()->clean($modulesDir, $recursive);
-
-                $output->success('The following directory has been successfully cleaned: ' . $modulesDir . '');
+            if (array_key_exists(2, $argv)) {
+                $targetDir = $argv[2];
             } else {
-                $output->error("The application modules directory doesn't exist. Please create it first, then re-execute this command. Expected path: $modulesDir");
+                $targetDir = $appDir . "/" . $modulesRelativePath;
+            }
+            
+            if (is_dir($targetDir)) {
+                CleanerTool::create()->clean($targetDir, $recursive);
+
+                $output->success('The following directory has been successfully cleaned: ' . $targetDir . '');
+            } else {
+                $output->error("The application modules directory doesn't exist. Please create it first, then re-execute this command. Expected path: $targetDir");
             }
         } else {
             $output->notice("");
