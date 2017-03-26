@@ -30,6 +30,7 @@ EEE
     {
         return [
             "Connexion" => ["GentelellaWebDirectory"],
+            "Core" => [],
             "GentelellaWebDirectory" => [],
         ];
     }

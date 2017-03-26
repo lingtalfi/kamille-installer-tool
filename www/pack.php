@@ -7,7 +7,7 @@ use Packer\Packer;
 
 /**
  * That's my private script to generate the packed output (packed.txt at the root of this app).
- * I call this script via a webserver.
+ * I call this script via a webserver or from the terminal (actually faster)
  */
 
 ini_set("display_errors", "1");
@@ -30,5 +30,5 @@ $script = str_replace('//replace', $c, $script);
 $destFile = __DIR__ . "/../kamille";
 file_put_contents($destFile, $script);
 
-echo "ok";
+echo "ok" . PHP_EOL;
 
