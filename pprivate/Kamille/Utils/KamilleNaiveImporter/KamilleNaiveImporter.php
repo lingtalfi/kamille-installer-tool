@@ -17,7 +17,7 @@ use Output\ProgramOutputInterface;
  * of the target application.
  *
  */
-class KamilleNaiveImporter
+class KamilleNaiveImporter implements KamilleNaiveImporterInterface
 {
     private $importers;
     /**
@@ -241,6 +241,9 @@ class KamilleNaiveImporter
     {
         $output = $this->getOutput();
         $prefix = $this->getPrefix();
+        $moduleName = $this->getCleanModuleName($moduleName);
+
+
         $oClass = $this->getModuleInstance($moduleName, $modulesDir);
         if ($oClass instanceof ProgramOutputAwareInterface) {
             $oClass->setProgramOutput($this->getOutput());
@@ -251,8 +254,10 @@ class KamilleNaiveImporter
 
         $output->success($prefix . "Module $moduleName has been uninstalled");
         $list = $this->getInstalledModulesList();
-        unset($list[array_search($moduleName, $list)]);
-        $this->writeList($list);
+        if (false !== ($pos = array_search($moduleName, $list))) {
+            unset($list[$pos]);
+            $this->writeList($list);
+        }
         return true;
     }
 
