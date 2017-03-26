@@ -1,12 +1,12 @@
 <?php
 
 
-namespace KamilleNaiveImporter;
+namespace Kamille\Utils\KamilleNaiveImporter;
 
 
 use Bat\FileSystemTool;
 use Kamille\Module\ModuleInterface;
-use KamilleNaiveImporter\Importer\ImporterInterface;
+use Kamille\Utils\KamilleNaiveImporter\Importer\ImporterInterface;
 use Output\ProgramOutput;
 use Output\ProgramOutputAwareInterface;
 use Output\ProgramOutputInterface;

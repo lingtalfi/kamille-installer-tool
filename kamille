@@ -177,53 +177,7 @@ class ProgramOutput extends Output implements ProgramOutputInterface
 }
 // ------------------------------
 
-namespace Kamille\Module\Exception {
-
-
-
-
-
-
-class ModuleException extends \Exception
-{
-
-}
-
-}
-// ------------------------------
-
-namespace Kamille\Module {
-
-
-
-
-
-
-use Kamille\Module\Exception\ModuleException;
-
-interface ModuleInterface
-{
-
-
-    /**
-     * @throws ModuleException when something wrong happens
-     * @return true if the install process is successful
-     */
-    public function install();
-
-
-    /**
-     * @throws ModuleException when something wrong happens
-     * @return true if the uninstall process is successful
-     */
-    public function uninstall();
-
-}
-
-}
-// ------------------------------
-
-namespace KamilleNaiveImporter\Importer {
+namespace Kamille\Utils\KamilleNaiveImporter\Importer {
 
 
 
@@ -488,6 +442,52 @@ EEE
         }
         return "";
     }
+}
+
+}
+// ------------------------------
+
+namespace Kamille\Module\Exception {
+
+
+
+
+
+
+class ModuleException extends \Exception
+{
+
+}
+
+}
+// ------------------------------
+
+namespace Kamille\Module {
+
+
+
+
+
+
+use Kamille\Module\Exception\ModuleException;
+
+interface ModuleInterface
+{
+
+
+    /**
+     * @throws ModuleException when something wrong happens
+     * @return true if the install process is successful
+     */
+    public function install();
+
+
+    /**
+     * @throws ModuleException when something wrong happens
+     * @return true if the uninstall process is successful
+     */
+    public function uninstall();
+
 }
 
 }
@@ -1405,7 +1405,7 @@ class FileSystemTool
 }
 // ------------------------------
 
-namespace KamilleNaiveImporter {
+namespace Kamille\Utils\KamilleNaiveImporter {
 
 
 
@@ -1414,7 +1414,7 @@ namespace KamilleNaiveImporter {
 
 use Bat\FileSystemTool;
 use Kamille\Module\ModuleInterface;
-use KamilleNaiveImporter\Importer\ImporterInterface;
+use Kamille\Utils\KamilleNaiveImporter\Importer\ImporterInterface;
 use Output\ProgramOutput;
 use Output\ProgramOutputAwareInterface;
 use Output\ProgramOutputInterface;
@@ -2037,7 +2037,7 @@ class ConsoleTool
 }
 // ------------------------------
 
-namespace KamilleNaiveImporter\Exception {
+namespace Kamille\Utils\KamilleNaiveImporter\Exception {
 
 
 
@@ -2052,7 +2052,7 @@ class KamilleNaiveImporterException extends \Exception
 }
 // ------------------------------
 
-namespace KamilleNaiveImporter\Log {
+namespace Kamille\Utils\KamilleNaiveImporter\Log {
 
 
 
@@ -2171,9 +2171,9 @@ namespace {
 
 
     use BumbleBee\Autoload\ButineurAutoloader;
-    use KamilleNaiveImporter\Importer\KamilleModulesImporter;
-    use KamilleNaiveImporter\KamilleNaiveImporter;
-    use KamilleNaiveImporter\Log\ProgramLog;
+    use Kamille\Utils\KamilleNaiveImporter\Importer\KamilleModulesImporter;
+    use Kamille\Utils\KamilleNaiveImporter\KamilleNaiveImporter;
+    use Kamille\Utils\KamilleNaiveImporter\Log\ProgramLog;
     use Output\ProgramOutput;
     use Tools\CleanerTool;
 

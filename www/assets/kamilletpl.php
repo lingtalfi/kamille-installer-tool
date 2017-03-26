@@ -18,9 +18,9 @@ namespace {
 
 
     use BumbleBee\Autoload\ButineurAutoloader;
-    use KamilleNaiveImporter\Importer\KamilleModulesImporter;
-    use KamilleNaiveImporter\KamilleNaiveImporter;
-    use KamilleNaiveImporter\Log\ProgramLog;
+    use Kamille\Utils\KamilleNaiveImporter\Importer\KamilleModulesImporter;
+    use Kamille\Utils\KamilleNaiveImporter\KamilleNaiveImporter;
+    use Kamille\Utils\KamilleNaiveImporter\Log\ProgramLog;
     use Output\ProgramOutput;
     use Tools\CleanerTool;
 

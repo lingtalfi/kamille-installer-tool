@@ -1,7 +1,7 @@
 <?php
 
 
-namespace KamilleNaiveImporter\Log;
+namespace Kamille\Utils\KamilleNaiveImporter\Log;
 
 /**
  * Foreground

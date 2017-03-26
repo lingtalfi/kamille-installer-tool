@@ -1,7 +1,7 @@
 <?php
 
 
-namespace KamilleNaiveImporter\Importer;
+namespace Kamille\Utils\KamilleNaiveImporter\Importer;
 
 
 class KamilleModulesImporter extends AbstractGithubHardcodedImporter

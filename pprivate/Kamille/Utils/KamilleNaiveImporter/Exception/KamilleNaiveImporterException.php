@@ -1,7 +1,7 @@
 <?php
 
 
-namespace KamilleNaiveImporter\Exception;
+namespace Kamille\Utils\KamilleNaiveImporter\Exception;
 
 
 class KamilleNaiveImporterException extends \Exception
