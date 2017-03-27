@@ -5,459 +5,460 @@
 namespace Kamille\Utils\KamilleNaiveImporter {
 
 
-
-
-
-
-interface KamilleNaiveImporterInterface
-{
-
-
-    /**
-     * @return array of installed modules
-     */
-    public function getInstalledModulesList();
-
-    /**
-     * @return array of imported module names
-     */
-    public function getImportedModulesList();
-
-    /**
-     * @return array, an array of importer fullName => array of module names
-     */
-    public function getAvailableModulesList($moduleAlias = null);
-
-
-    /**
-     * @return array, an array of importer fullName => array of module names
-     */
-    public function search($search, $searchInDescriptionToo = false, $moduleAlias = null);
-
-
-    public function isInstalled($moduleName);
-
-
-    public function import($moduleName, $modulesDir, $force = false);
-
-    public function install($moduleName, $modulesDir, $force = false);
-
-
-    public function uninstall($moduleName, $modulesDir);
-
-
-}
-
-
-
-
-
-
-
-use Bat\FileSystemTool;
-use Kamille\Module\ModuleInterface;
-use Kamille\Utils\KamilleNaiveImporter\Importer\ImporterInterface;
-use Output\ProgramOutput;
-use Output\ProgramOutputAwareInterface;
-use Output\ProgramOutputInterface;
-
-
-/**
- * This importer stores the installed module list in a text file at the root
- * of the target application.
- *
- */
-class KamilleNaiveImporter implements KamilleNaiveImporterInterface
-{
-    private $importers;
-    /**
-     * @var ProgramOutputInterface $output
-     */
-    private $output;
-    private $appDir;
-    private $modulesDirRelPath;
-
-    //
-    private $hint;
-
-
-    public function __construct()
+    interface KamilleNaiveImporterInterface
     {
-        $this->importers = [];
-        $this->modulesDirRelPath = "class-modules";
+
+
+        /**
+         * @return array of installed modules
+         */
+        public function getInstalledModulesList();
+
+        /**
+         * @return array of imported module names
+         */
+        public function getImportedModulesList();
+
+        /**
+         * @return array, an array of importer fullName => array of module names
+         */
+        public function getAvailableModulesList($moduleAlias = null);
+
+
+        /**
+         * @return array, an array of importer fullName => array of module names
+         */
+        public function search($search, $searchInDescriptionToo = false, $moduleAlias = null);
+
+
+        public function isInstalled($moduleName);
+
+
+        public function import($moduleName, $modulesDir, $force = false);
+
+        public function install($moduleName, $modulesDir, $force = false);
+
+
+        public function uninstall($moduleName, $modulesDir);
+
+
     }
 
 
-    public static function create()
-    {
-        return new static();
-    }
+    use Bat\FileSystemTool;
+    use Kamille\Module\ModuleInterface;
+    use Kamille\Utils\KamilleNaiveImporter\Importer\ImporterInterface;
+    use Output\ProgramOutput;
+    use Output\ProgramOutputAwareInterface;
+    use Output\ProgramOutputInterface;
+    use TokenFun\TokenFinder\Tool\TokenFinderTool;
 
 
-    public function getInstalledModulesList()
+    /**
+     * This importer stores the installed module list in a text file at the root
+     * of the target application.
+     *
+     */
+    class KamilleNaiveImporter implements KamilleNaiveImporterInterface
     {
-        $ret = [];
-        $f = $this->getFile();
-        if (file_exists($f)) {
-            $ret = file($f, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-            $ret = array_filter($ret);
-            $ret = array_unique($ret);
+        private $importers;
+        /**
+         * @var ProgramOutputInterface $output
+         */
+        private $output;
+        private $appDir;
+        private $modulesDirRelPath;
+
+        //
+        private $hint;
+
+
+        public function __construct()
+        {
+            $this->importers = [];
+            $this->modulesDirRelPath = "class-modules";
         }
-        return $ret;
-    }
 
-    public function getImportedModulesList()
-    {
-        $ret = [];
-        $modulesDir = $this->appDir . "/" . $this->modulesDirRelPath;
-        if (is_dir($modulesDir)) {
-            $files = scandir($modulesDir);
-            foreach ($files as $f) {
-                if ('.' !== $f && '..' !== $f) {
-                    if (is_dir($modulesDir . "/" . $f)) {
-                        $ret[] = $f;
+
+        public static function create()
+        {
+            return new static();
+        }
+
+
+        public function getInstalledModulesList()
+        {
+            $ret = [];
+            $f = $this->getFile();
+            if (file_exists($f)) {
+                $ret = file($f, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+                $ret = array_filter($ret);
+                $ret = array_unique($ret);
+            }
+            return $ret;
+        }
+
+        public function getImportedModulesList()
+        {
+            $ret = [];
+            $modulesDir = $this->appDir . "/" . $this->modulesDirRelPath;
+            if (is_dir($modulesDir)) {
+                $files = scandir($modulesDir);
+                foreach ($files as $f) {
+                    if ('.' !== $f && '..' !== $f) {
+                        if (is_dir($modulesDir . "/" . $f)) {
+                            $ret[] = $f;
+                        }
                     }
                 }
             }
-        }
-        return $ret;
-    }
-
-
-    /**
-     * @return array, an array of importer fullName => array of module names
-     */
-    public function getAvailableModulesList($moduleAlias = null)
-    {
-        $ret = [];
-
-        foreach ($this->importers as $importer) {
-
-            if (null !== $moduleAlias) {
-                $aliases = $importer->getAliases();
-                if (false === in_array($moduleAlias, $aliases, true)) {
-                    continue;
-                }
-            }
-
-            /**
-             * @var ImporterInterface $importer
-             */
-            $arr = [];
-            $modules = $importer->getAvailableModules();
-            foreach ($modules as $module) {
-                $desc = $importer->getModuleDescription($module);
-                $arr[] = [$module, $desc];
-            }
-            $ret[$importer->getFullName()] = $arr;
+            return $ret;
         }
 
-        return $ret;
-    }
 
-    public function search($search, $searchInDescriptionToo = false, $moduleAlias = null)
-    {
-        $importer2modules = $this->getAvailableModulesList($moduleAlias);
-        $ret = [];
-        foreach ($importer2modules as $importer => $modules) {
-            $ret[$importer] = array_filter($modules, function ($v) use ($search, $searchInDescriptionToo) {
-                $v[0] = strtolower($v[0]);
-                $v[1] = strtolower($v[1]);
-                $search = strtolower($search);
-                if (
-                    false !== mb_strpos($v[0], $search) ||
-                    (true === $searchInDescriptionToo && false !== mb_strpos($v[1], $search))
-                ) {
-                    return true;
+        /**
+         * @return array, an array of importer fullName => array of module names
+         */
+        public function getAvailableModulesList($moduleAlias = null)
+        {
+            $ret = [];
+
+            foreach ($this->importers as $importer) {
+
+                if (null !== $moduleAlias) {
+                    $aliases = $importer->getAliases();
+                    if (false === in_array($moduleAlias, $aliases, true)) {
+                        continue;
+                    }
                 }
-                return false;
-            });
+
+                /**
+                 * @var ImporterInterface $importer
+                 */
+                $arr = [];
+                $modules = $importer->getAvailableModules();
+                foreach ($modules as $module) {
+                    $desc = $importer->getModuleDescription($module);
+                    $arr[] = [$module, $desc];
+                }
+                $ret[$importer->getFullName()] = $arr;
+            }
+
+            return $ret;
         }
-        return $ret;
-    }
 
-
-    public function isInstalled($moduleName)
-    {
-        $list = $this->getInstalledModulesList();
-        return in_array($moduleName, $list, true);
-    }
-
-
-    public function import($moduleName, $modulesDir, $force = false)
-    {
-        $this->hint = "import";
-        return $this->doImport($moduleName, $modulesDir, $force);
-    }
-
-    public function doImport($moduleName, $modulesDir, $force = false)
-    {
-        $output = $this->getOutput();
-        $hasAnError = false;
-        $prefix = $this->getPrefix();
-        $output->debug($prefix . "Preparing import for module $moduleName");
-
-        if (false !== ($importer = $this->getImporter($moduleName))) {
-
-            $moduleName = $this->getCleanModuleName($moduleName);
-            $importerName = $importer->getFullName();
-            $output->debug($prefix . "Importer $importerName has been chosen for importing module $moduleName.");
-
-            $tree = $importer->getDependencyTree($moduleName);
-
-            $output->info($prefix . "Collecting dependency tree for module $moduleName:");
-            foreach ($tree as $module) {
-                $output->notice("- $module");
+        public function search($search, $searchInDescriptionToo = false, $moduleAlias = null)
+        {
+            $importer2modules = $this->getAvailableModulesList($moduleAlias);
+            $ret = [];
+            foreach ($importer2modules as $importer => $modules) {
+                $ret[$importer] = array_filter($modules, function ($v) use ($search, $searchInDescriptionToo) {
+                    $v[0] = strtolower($v[0]);
+                    $v[1] = strtolower($v[1]);
+                    $search = strtolower($search);
+                    if (
+                        false !== mb_strpos($v[0], $search) ||
+                        (true === $searchInDescriptionToo && false !== mb_strpos($v[1], $search))
+                    ) {
+                        return true;
+                    }
+                    return false;
+                });
             }
-
-
-            if (true === $force) {
-                $output->debug($prefix . "Removing all modules (-f flag)");
-                foreach ($tree as $module) {
-                    $moduleDir = $modulesDir . "/" . $module;
-                    FileSystemTool::remove($moduleDir);
-                }
-            }
-
-            $levelInfo = "info";
-            $levelSuccess = "success";
-            if ('import' !== $this->hint) {
-                $levelInfo = "debug";
-                $levelSuccess = "debug";
-            }
-
-            foreach ($tree as $module) {
-
-                $output->$levelInfo($prefix . "Importing module $module");
-                $moduleDir = $modulesDir . "/$module";
-
-                if (file_exists($moduleDir)) {
-                    $output->$levelSuccess($prefix . "Module $module is already imported");
-                } elseif (true === $importer->import($module, $modulesDir)) {
-                    $output->$levelSuccess($prefix . "Module $module has been imported");
-                } else {
-                    $output->error($prefix . "Failed importing module $module");
-                    $hasAnError = true;
-                }
-            }
-        } else {
-            $output->error($prefix . "Cannot import module $moduleName: no importer can handle it");
-            $hasAnError = true;
+            return $ret;
         }
-        return (false === $hasAnError);
-    }
 
 
-    public function install($moduleName, $modulesDir, $force = false)
-    {
-        $this->hint = "install";
-        $output = $this->getOutput();
-        $prefix = $this->getPrefix();
-        $output->debug($prefix . "Preparing install for module $moduleName");
+        public function isInstalled($moduleName)
+        {
+            $list = $this->getInstalledModulesList();
+            return in_array($moduleName, $list, true);
+        }
 
-        if (true === $this->doImport($moduleName, $modulesDir, $force)) {
+
+        public function import($moduleName, $modulesDir, $force = false)
+        {
+            $this->hint = "import";
+            return $this->doImport($moduleName, $modulesDir, $force);
+        }
+
+        public function doImport($moduleName, $modulesDir, $force = false)
+        {
+            $output = $this->getOutput();
+            $hasAnError = false;
+            $prefix = $this->getPrefix();
+            $output->debug($prefix . "Preparing import for module $moduleName");
 
             if (false !== ($importer = $this->getImporter($moduleName))) {
-                // reinstall every module that is not installed already
 
                 $moduleName = $this->getCleanModuleName($moduleName);
-
+                $importerName = $importer->getFullName();
+                $output->debug($prefix . "Importer $importerName has been chosen for importing module $moduleName.");
 
                 $tree = $importer->getDependencyTree($moduleName);
 
-                $installed = $this->getInstalledModulesList();
+                $output->info($prefix . "Collecting dependency tree for module $moduleName:");
                 foreach ($tree as $module) {
+                    $output->notice("- $module");
+                }
 
 
-                    $output->info($prefix . "Installing module $module");
-
-
-                    if (false === $force && in_array($module, $installed, true)) {
-                        $output->success($prefix . "Module $module is already installed");
-                        continue;
-                    } else {
-                        $this->installModule($module, $modulesDir);
-                        $output->success($prefix . "Module $module has been installed");
+                if (true === $force) {
+                    $output->debug($prefix . "Removing all modules (-f flag)");
+                    foreach ($tree as $module) {
+                        $moduleDir = $modulesDir . "/" . $module;
+                        FileSystemTool::remove($moduleDir);
                     }
                 }
-            }
-        } else {
-            $output->error($prefix . "The import process has failed, aborting install process for module $moduleName");
-        }
-    }
 
+                $levelInfo = "info";
+                $levelSuccess = "success";
+                if ('import' !== $this->hint) {
+                    $levelInfo = "debug";
+                    $levelSuccess = "debug";
+                }
 
-    public function uninstall($moduleName, $modulesDir)
-    {
-        $output = $this->getOutput();
-        $prefix = $this->getPrefix();
-        $moduleName = $this->getCleanModuleName($moduleName);
+                foreach ($tree as $module) {
 
+                    $output->$levelInfo($prefix . "Importing module $module");
+                    $moduleDir = $modulesDir . "/$module";
 
-        $oClass = $this->getModuleInstance($moduleName, $modulesDir);
-        if ($oClass instanceof ProgramOutputAwareInterface) {
-            $oClass->setProgramOutput($this->getOutput());
-        }
-
-        $output->info($prefix . "Uninstalling module $moduleName");
-        $oClass->uninstall();
-
-        $output->success($prefix . "Module $moduleName has been uninstalled");
-        $list = $this->getInstalledModulesList();
-        if (false !== ($pos = array_search($moduleName, $list))) {
-            unset($list[$pos]);
-            $this->writeList($list);
-        }
-        return true;
-    }
-
-
-
-    //--------------------------------------------
-    //
-    //--------------------------------------------
-
-    public function setAppDir($appDir)
-    {
-        $this->appDir = $appDir;
-        return $this;
-    }
-
-    public function addImporter(ImporterInterface $importer)
-    {
-        $this->importers[] = $importer;
-        return $this;
-    }
-
-
-    public function setOutput(ProgramOutputInterface $output)
-    {
-        $this->output = $output;
-        return $this;
-    }
-
-    //--------------------------------------------
-    //
-    //--------------------------------------------
-    /**
-     * @return ProgramOutputInterface
-     */
-    protected function getOutput()
-    {
-        if (null === $this->output) {
-            $this->output = new ProgramOutput();
-        }
-        return $this->output;
-    }
-
-
-    //--------------------------------------------
-    //
-    //--------------------------------------------
-    /**
-     * @return ModuleInterface|false
-     */
-    private function getModuleInstance($moduleName, $modulesDir)
-    {
-        $output = $this->getOutput();
-        $moduleDir = $modulesDir . "/$moduleName";
-        if (is_dir($moduleDir)) {
-            $moduleFile = $moduleDir . "/$moduleName" . "Module.php";
-            if (file_exists($moduleFile)) {
-                require_once $moduleFile;
-                $className = "Module\\" . $moduleName . '\\' . $moduleName . "Module";
-                $oClass = new $className();
-                if ($oClass instanceof ModuleInterface) {
-                    return $oClass;
-                } else {
-                    $output->error(sprintf("$className must be an instance of ModuleInterface, instance of %s given", get_class($oClass)));
+                    if (file_exists($moduleDir)) {
+                        $output->$levelSuccess($prefix . "Module $module is already imported");
+                    } elseif (true === $importer->import($module, $modulesDir)) {
+                        $output->$levelSuccess($prefix . "Module $module has been imported");
+                    } else {
+                        $output->error($prefix . "Failed importing module $module");
+                        $hasAnError = true;
+                    }
                 }
             } else {
-                $output->error("module file not found: $moduleFile");
+                $output->error($prefix . "Cannot import module $moduleName: no importer can handle it");
+                $hasAnError = true;
             }
-        } else {
-            $output->error("module not imported: $moduleName. Cannot get the module instance");
+            return (false === $hasAnError);
         }
-        return false;
-    }
 
-    private function installModule($moduleName, $modulesDir)
-    {
-        $oClass = $this->getModuleInstance($moduleName, $modulesDir);
-        if ($oClass instanceof ProgramOutputAwareInterface) {
-            $oClass->setProgramOutput($this->getOutput());
+
+        public function install($moduleName, $modulesDir, $force = false)
+        {
+            $this->hint = "install";
+            $output = $this->getOutput();
+            $prefix = $this->getPrefix();
+            $output->debug($prefix . "Preparing install for module $moduleName");
+
+            if (true === $this->doImport($moduleName, $modulesDir, $force)) {
+
+                if (false !== ($importer = $this->getImporter($moduleName))) {
+                    // reinstall every module that is not installed already
+
+                    $moduleName = $this->getCleanModuleName($moduleName);
+
+
+                    $tree = $importer->getDependencyTree($moduleName);
+
+                    $installed = $this->getInstalledModulesList();
+                    foreach ($tree as $module) {
+
+
+                        $output->info($prefix . "Installing module $module");
+
+
+                        if (false === $force && in_array($module, $installed, true)) {
+                            $output->success($prefix . "Module $module is already installed");
+                            continue;
+                        } else {
+                            $this->installModule($module, $modulesDir);
+                            $output->success($prefix . "Module $module has been installed");
+                        }
+                    }
+                }
+            } else {
+                $output->error($prefix . "The import process has failed, aborting install process for module $moduleName");
+            }
         }
-        $oClass->install();
-        $list = $this->getInstalledModulesList();
-        if (!in_array($moduleName, $list)) {
-            $list[] = $moduleName;
+
+
+        public function uninstall($moduleName, $modulesDir)
+        {
+            $output = $this->getOutput();
+            $prefix = $this->getPrefix();
+            $moduleName = $this->getCleanModuleName($moduleName);
+
+
+            $oClass = $this->getModuleInstance($moduleName, $modulesDir);
+            if ($oClass instanceof ProgramOutputAwareInterface) {
+                $oClass->setProgramOutput($this->getOutput());
+            }
+
+            $output->info($prefix . "Uninstalling module $moduleName");
+            $oClass->uninstall();
+
+            $output->success($prefix . "Module $moduleName has been uninstalled");
+            $list = $this->getInstalledModulesList();
+            if (false !== ($pos = array_search($moduleName, $list))) {
+                unset($list[$pos]);
+                $this->writeList($list);
+            }
+            return true;
         }
-        $this->writeList($list);
-        return true;
-    }
 
 
-    private function writeList(array $list)
-    {
-        $f = $this->getFile();
-        file_put_contents($f, implode(PHP_EOL, $list));
-    }
 
-    private function getFile()
-    {
-        return $this->appDir . "/modules.txt";
-    }
+        //--------------------------------------------
+        //
+        //--------------------------------------------
 
+        public function setAppDir($appDir)
+        {
+            $this->appDir = $appDir;
+            return $this;
+        }
 
-    /**
-     *
-     * @return ImporterInterface|false
-     */
-    private function getImporter($moduleName)
-    {
+        public function addImporter(ImporterInterface $importer)
+        {
+            $this->importers[] = $importer;
+            return $this;
+        }
 
 
-        // uses aliases?
-        $p = explode('.', $moduleName, 2);
-        if (2 === count($p)) {
-            $alias = $p[0];
+        public function setOutput(ProgramOutputInterface $output)
+        {
+            $this->output = $output;
+            return $this;
+        }
 
-            /**
-             * @var ImporterInterface $importer
-             */
+        //--------------------------------------------
+        //
+        //--------------------------------------------
+        /**
+         * @return ProgramOutputInterface
+         */
+        protected function getOutput()
+        {
+            if (null === $this->output) {
+                $this->output = new ProgramOutput();
+            }
+            return $this->output;
+        }
+
+
+        //--------------------------------------------
+        //
+        //--------------------------------------------
+        /**
+         * @return ModuleInterface|false
+         */
+        private function getModuleInstance($moduleName, $modulesDir)
+        {
+            $output = $this->getOutput();
+            $moduleDir = $modulesDir . "/$moduleName";
+            if (is_dir($moduleDir)) {
+                $moduleFile = $moduleDir . "/$moduleName" . "Module.php";
+                if (file_exists($moduleFile)) {
+
+                    // trying to have a case-sensitive module name
+                    $tokens = token_get_all(file_get_contents($moduleFile));
+                    $namespace = TokenFinderTool::getNamespace($tokens);
+                    $p = explode('\\', $namespace);
+                    if (array_key_exists(1, $p) && $p[1] !== $moduleName) {
+                        $output->error("Module name is case-sensistive: please use " . $p[1] . " as the module name");
+                    } else {
+                        require_once $moduleFile;
+                        $className = "Module\\" . $moduleName . '\\' . $moduleName . "Module";
+                        $oClass = new $className();
+                        if ($oClass instanceof ModuleInterface) {
+                            return $oClass;
+                        } else {
+                            $output->error(sprintf("$className must be an instance of ModuleInterface, instance of %s given", get_class($oClass)));
+                        }
+                    }
+                } else {
+                    $output->error("module file not found: $moduleFile");
+                }
+            } else {
+                $output->error("module not imported: $moduleName. Cannot get the module instance");
+            }
+            return false;
+        }
+
+        private function installModule($moduleName, $modulesDir)
+        {
+            $oClass = $this->getModuleInstance($moduleName, $modulesDir);
+            if ($oClass instanceof ProgramOutputAwareInterface) {
+                $oClass->setProgramOutput($this->getOutput());
+            }
+            $oClass->install();
+            $list = $this->getInstalledModulesList();
+            if (!in_array($moduleName, $list)) {
+                $list[] = $moduleName;
+            }
+            $this->writeList($list);
+            return true;
+        }
+
+
+        private function writeList(array $list)
+        {
+            $f = $this->getFile();
+            file_put_contents($f, implode(PHP_EOL, $list));
+        }
+
+        private function getFile()
+        {
+            return $this->appDir . "/modules.txt";
+        }
+
+
+        /**
+         *
+         * @return ImporterInterface|false
+         */
+        private function getImporter($moduleName)
+        {
+
+
+            // uses aliases?
+            $p = explode('.', $moduleName, 2);
+            if (2 === count($p)) {
+                $alias = $p[0];
+
+                /**
+                 * @var ImporterInterface $importer
+                 */
+                foreach ($this->importers as $importer) {
+                    $aliases = $importer->getAliases();
+                    if (in_array($alias, $aliases, true)) {
+                        return $importer;
+                    }
+                }
+                // alias not recognized, we naturally call down to the next block, without interrupting...
+            }
+
+
             foreach ($this->importers as $importer) {
-                $aliases = $importer->getAliases();
-                if (in_array($alias, $aliases, true)) {
+                /**
+                 * @var ImporterInterface $importer
+                 */
+                if (true === $importer->canImport($moduleName)) {
                     return $importer;
                 }
             }
-            // alias not recognized, we naturally call down to the next block, without interrupting...
+            return false;
         }
 
-
-        foreach ($this->importers as $importer) {
-            /**
-             * @var ImporterInterface $importer
-             */
-            if (true === $importer->canImport($moduleName)) {
-                return $importer;
-            }
+        private function getPrefix()
+        {
+            return "* ";
         }
-        return false;
-    }
 
-    private function getPrefix()
-    {
-        return "* ";
-    }
+        private function getCleanModuleName($moduleName)
+        {
+            $p = explode('.', $moduleName);
+            return array_pop($p);
+        }
 
-    private function getCleanModuleName($moduleName)
-    {
-        $p = explode('.', $moduleName);
-        return array_pop($p);
     }
-
-}
 
 }
 // ------------------------------
@@ -465,174 +466,155 @@ class KamilleNaiveImporter implements KamilleNaiveImporterInterface
 namespace Output {
 
 
-
-
-
-
-interface OutputInterface
-{
-    public function write($msg, $lbr = true);
-}
-
-
-
-
-
-
-
-interface ProgramOutputInterface extends OutputInterface
-{
-    public function success($msg, $lbr = true);
-    public function error($msg, $lbr = true);
-    public function warn($msg, $lbr = true);
-    public function info($msg, $lbr = true);
-    public function notice($msg, $lbr = true);
-    public function debug($msg, $lbr = true);
-}
-
-
-
-
-
-
-
-interface ProgramOutputAwareInterface
-{
-    public function setProgramOutput(ProgramOutputInterface $output);
-}
-
-
-
-
-
-
-
-class Output implements OutputInterface
-{
-    public function write($msg, $lbr = true)
+    interface OutputInterface
     {
-        echo $msg;
-        if (true === $lbr) {
-            echo PHP_EOL;
+        public function write($msg, $lbr = true);
+    }
+
+
+    interface ProgramOutputInterface extends OutputInterface
+    {
+        public function success($msg, $lbr = true);
+
+        public function error($msg, $lbr = true);
+
+        public function warn($msg, $lbr = true);
+
+        public function info($msg, $lbr = true);
+
+        public function notice($msg, $lbr = true);
+
+        public function debug($msg, $lbr = true);
+    }
+
+
+    interface ProgramOutputAwareInterface
+    {
+        public function setProgramOutput(ProgramOutputInterface $output);
+    }
+
+
+    class Output implements OutputInterface
+    {
+        public function write($msg, $lbr = true)
+        {
+            echo $msg;
+            if (true === $lbr) {
+                echo PHP_EOL;
+            }
         }
+
     }
 
-}
 
-
-
-
-
-
-
-/**
- *
- * This output is made for a cli program.
- *
- *
- *
- * Foreground
- * ----------------
- * black: 0;30
- * blue: 0;34
- * green: 0;32
- * cyan: 0;36    (light blue)
- * red: 0;31
- * purple: 0;35
- * brown: 0;33
- * yellow: 1;33
- * light gray: 0;37
- * white: 1;37
- *
- *
- * dark gray: 1;30
- * light blue: 1;34
- * light green: 1;32
- * light cyan: 1;36
- * light red: 1;31
- * light purple: 1;35
- * light gray: 0;37
- *
- *
- * Background
- * ----------------
- * black: 40
- * red: 41
- * green: 42
- * yellow: 43
- * blue: 44
- * magenta: 45
- * cyan: 46
- * light gray: 47
- *
- */
-class ProgramOutput extends Output implements ProgramOutputInterface
-{
-
-    private $dampened;
-
-    public function __construct()
+    /**
+     *
+     * This output is made for a cli program.
+     *
+     *
+     *
+     * Foreground
+     * ----------------
+     * black: 0;30
+     * blue: 0;34
+     * green: 0;32
+     * cyan: 0;36    (light blue)
+     * red: 0;31
+     * purple: 0;35
+     * brown: 0;33
+     * yellow: 1;33
+     * light gray: 0;37
+     * white: 1;37
+     *
+     *
+     * dark gray: 1;30
+     * light blue: 1;34
+     * light green: 1;32
+     * light cyan: 1;36
+     * light red: 1;31
+     * light purple: 1;35
+     * light gray: 0;37
+     *
+     *
+     * Background
+     * ----------------
+     * black: 40
+     * red: 41
+     * green: 42
+     * yellow: 43
+     * blue: 44
+     * magenta: 45
+     * cyan: 46
+     * light gray: 47
+     *
+     */
+    class ProgramOutput extends Output implements ProgramOutputInterface
     {
-        $this->dampened = [];
-    }
 
-    public static function create()
-    {
-        return new static();
-    }
+        private $dampened;
 
-    public function success($msg, $lbr = true)
-    {
-        $this->writeMessage('success', $msg, "0;32", $lbr);
-    }
-
-    public function error($msg, $lbr = true)
-    {
-        $this->writeMessage('error', $msg, "0;31", $lbr);
-    }
-
-    public function warn($msg, $lbr = true)
-    {
-        $this->writeMessage('warn', $msg, "1;31", $lbr);
-    }
-
-    public function info($msg, $lbr = true)
-    {
-        $this->writeMessage('info', $msg, "0;34", $lbr);
-    }
-
-    public function notice($msg, $lbr = true)
-    {
-        $this->writeMessage('notice', $msg, "0;30", $lbr);
-    }
-
-    public function debug($msg, $lbr = true)
-    {
-        $this->writeMessage('debug', $msg, "0;33", $lbr);
-    }
-    //--------------------------------------------
-    //
-    //--------------------------------------------
-    public function setDampened(array $dampened)
-    {
-        $this->dampened = $dampened;
-        return $this;
-    }
-
-    //--------------------------------------------
-    //
-    //--------------------------------------------
-    private function writeMessage($type, $msg, $colorCode, $lbr = true)
-    {
-        // is dampened?
-        if (in_array($type, $this->dampened, true)) {
-            return;
+        public function __construct()
+        {
+            $this->dampened = [];
         }
-        $msg = "\e[" . $colorCode . "m$msg\e[0m";
-        $this->write($msg, $lbr);
-    }
 
-}
+        public static function create()
+        {
+            return new static();
+        }
+
+        public function success($msg, $lbr = true)
+        {
+            $this->writeMessage('success', $msg, "0;32", $lbr);
+        }
+
+        public function error($msg, $lbr = true)
+        {
+            $this->writeMessage('error', $msg, "0;31", $lbr);
+        }
+
+        public function warn($msg, $lbr = true)
+        {
+            $this->writeMessage('warn', $msg, "1;31", $lbr);
+        }
+
+        public function info($msg, $lbr = true)
+        {
+            $this->writeMessage('info', $msg, "0;34", $lbr);
+        }
+
+        public function notice($msg, $lbr = true)
+        {
+            $this->writeMessage('notice', $msg, "0;30", $lbr);
+        }
+
+        public function debug($msg, $lbr = true)
+        {
+            $this->writeMessage('debug', $msg, "0;33", $lbr);
+        }
+        //--------------------------------------------
+        //
+        //--------------------------------------------
+        public function setDampened(array $dampened)
+        {
+            $this->dampened = $dampened;
+            return $this;
+        }
+
+        //--------------------------------------------
+        //
+        //--------------------------------------------
+        private function writeMessage($type, $msg, $colorCode, $lbr = true)
+        {
+            // is dampened?
+            if (in_array($type, $this->dampened, true)) {
+                return;
+            }
+            $msg = "\e[" . $colorCode . "m$msg\e[0m";
+            $this->write($msg, $lbr);
+        }
+
+    }
 
 }
 // ------------------------------
@@ -640,269 +622,243 @@ class ProgramOutput extends Output implements ProgramOutputInterface
 namespace Kamille\Utils\KamilleNaiveImporter\Importer {
 
 
-
-
-
-
-interface ImporterInterface
-{
-
-
-    /**
-     * @return string, the full name of the importer
-     */
-    public function getFullName();
-
-    /**
-     * @return array, an array of importer aliases
-     */
-    public function getAliases();
-
-    public function setAliases(array $aliases);
-
-
-    /**
-     * @param $moduleName
-     * @return bool
-     */
-    public function canImport($moduleName);
-
-
-    /**
-     * @param $moduleName
-     * @return array of flattened (cycling references resolved) dependencies for the given module;
-     * the dependency tree includes the moduleName itself.
-     *
-     * The order is not considered important.
-     */
-    public function getDependencyTree($moduleName);
-
-
-    /**
-     * Import the given module(s) in the given modulesDir directory.
-     * Does NOT import dependencies.
-     * @return bool, indicating success or failure
-     */
-    public function import($moduleName, $modulesDir);
-
-
-    /**
-     * @return array, list of modules this importer is capable of fetching
-     */
-    public function getAvailableModules();
-
-    public function getModuleDescription($moduleName);
-}
-
-
-
-
-
-
-
-abstract class AbstractImporter implements ImporterInterface
-{
-
-
-    private $aliases;
-
-    public function __construct()
+    interface ImporterInterface
     {
-        $this->aliases = [];
-    }
 
-    public static function create()
-    {
-        return new static();
-    }
 
-    public function getFullName()
-    {
-        return get_called_class();
-    }
+        /**
+         * @return string, the full name of the importer
+         */
+        public function getFullName();
 
-    public function getAliases()
-    {
-        return $this->aliases;
-    }
+        /**
+         * @return array, an array of importer aliases
+         */
+        public function getAliases();
 
-    public function setAliases(array $aliases)
-    {
-        $this->aliases = $aliases;
-        return $this;
+        public function setAliases(array $aliases);
+
+
+        /**
+         * @param $moduleName
+         * @return bool
+         */
+        public function canImport($moduleName);
+
+
+        /**
+         * @param $moduleName
+         * @return array of flattened (cycling references resolved) dependencies for the given module;
+         * the dependency tree includes the moduleName itself.
+         *
+         * The order is not considered important.
+         */
+        public function getDependencyTree($moduleName);
+
+
+        /**
+         * Import the given module(s) in the given modulesDir directory.
+         * Does NOT import dependencies.
+         * @return bool, indicating success or failure
+         */
+        public function import($moduleName, $modulesDir);
+
+
+        /**
+         * @return array, list of modules this importer is capable of fetching
+         */
+        public function getAvailableModules();
+
+        public function getModuleDescription($moduleName);
     }
 
 
-}
-
-
-
-
-
-
-
-abstract class AbstractHardcodedImporter extends AbstractImporter
-{
-
-    private $dependencyMap;
-
-
-    public function __construct()
+    abstract class AbstractImporter implements ImporterInterface
     {
-        parent::__construct();
-        $this->dependencyMap = $this->getDependencyMap();
+
+
+        private $aliases;
+
+        public function __construct()
+        {
+            $this->aliases = [];
+        }
+
+        public static function create()
+        {
+            return new static();
+        }
+
+        public function getFullName()
+        {
+            return get_called_class();
+        }
+
+        public function getAliases()
+        {
+            return $this->aliases;
+        }
+
+        public function setAliases(array $aliases)
+        {
+            $this->aliases = $aliases;
+            return $this;
+        }
+
+
     }
 
 
-    //--------------------------------------------
-    // OVERRIDE THIS METHOD
-    //--------------------------------------------
-    protected function getDependencyMap()
+    abstract class AbstractHardcodedImporter extends AbstractImporter
     {
-        return [];
-    }
+
+        private $dependencyMap;
 
 
-    //--------------------------------------------
-    //
-    //--------------------------------------------
-    public function getDependencyTree($moduleName)
-    {
-        $tree = [];
-        $this->collectDependencyTree($moduleName, $tree);
-        $tree = array_unique($tree);
-        return $tree;
-    }
-
-    public function getAvailableModules()
-    {
-        return array_keys($this->dependencyMap);
-    }
+        public function __construct()
+        {
+            parent::__construct();
+            $this->dependencyMap = $this->getDependencyMap();
+        }
 
 
-    public function canImport($moduleName)
-    {
-        return array_key_exists($moduleName, $this->dependencyMap);
-    }
+        //--------------------------------------------
+        // OVERRIDE THIS METHOD
+        //--------------------------------------------
+        protected function getDependencyMap()
+        {
+            return [];
+        }
 
 
-    //--------------------------------------------
-    //
-    //--------------------------------------------
-    private function collectDependencyTree($modules, array &$tree)
-    {
-        if (is_string($modules)) {
-            $moduleName = $modules;
-            $tree[] = $moduleName;
-            if (array_key_exists($moduleName, $this->dependencyMap)) {
-                $deps = $this->dependencyMap[$moduleName];
-                foreach ($deps as $dep) {
-                    if (!in_array($dep, $tree, true)) {
-                        $this->collectDependencyTree($dep, $tree);
+        //--------------------------------------------
+        //
+        //--------------------------------------------
+        public function getDependencyTree($moduleName)
+        {
+            $tree = [];
+            $this->collectDependencyTree($moduleName, $tree);
+            $tree = array_unique($tree);
+            return $tree;
+        }
+
+        public function getAvailableModules()
+        {
+            return array_keys($this->dependencyMap);
+        }
+
+
+        public function canImport($moduleName)
+        {
+            return array_key_exists($moduleName, $this->dependencyMap);
+        }
+
+
+        //--------------------------------------------
+        //
+        //--------------------------------------------
+        private function collectDependencyTree($modules, array &$tree)
+        {
+            if (is_string($modules)) {
+                $moduleName = $modules;
+                $tree[] = $moduleName;
+                if (array_key_exists($moduleName, $this->dependencyMap)) {
+                    $deps = $this->dependencyMap[$moduleName];
+                    foreach ($deps as $dep) {
+                        if (!in_array($dep, $tree, true)) {
+                            $this->collectDependencyTree($dep, $tree);
+                        }
                     }
                 }
-            }
-        } elseif (is_array($modules)) {
-            foreach ($modules as $moduleName) {
-                $this->collectDependencyTree($moduleName, $tree);
+            } elseif (is_array($modules)) {
+                foreach ($modules as $moduleName) {
+                    $this->collectDependencyTree($moduleName, $tree);
+                }
             }
         }
     }
-}
 
 
-
-
-
-
-
-
-abstract class AbstractGithubHardcodedImporter extends AbstractHardcodedImporter
-{
-
-    private $githubRepoName;
-
-
-
-    public function __construct()
+    abstract class AbstractGithubHardcodedImporter extends AbstractHardcodedImporter
     {
-        parent::__construct();
-        $this->githubRepoName = $this->getGithubRepositoryName();
-    }
+
+        private $githubRepoName;
 
 
-    //--------------------------------------------
-    // OVERRIDE THIS METHOD
-    //--------------------------------------------
-    protected function getGithubRepositoryName()
-    {
-        throw new \Exception("Override this method");
-    }
+        public function __construct()
+        {
+            parent::__construct();
+            $this->githubRepoName = $this->getGithubRepositoryName();
+        }
 
 
-    //--------------------------------------------
-    //
-    //--------------------------------------------
-    public function import($moduleName, $modulesDir)
-    {
-        $output = [];
-        $returnVar = 0;
-        $cmd = 'cd "' . $modulesDir . '"; git clone https://github.com/' . $this->githubRepoName . '/' . $moduleName . '.git';
-        exec($cmd, $output, $returnVar);
+        //--------------------------------------------
+        // OVERRIDE THIS METHOD
+        //--------------------------------------------
+        protected function getGithubRepositoryName()
+        {
+            throw new \Exception("Override this method");
+        }
 
-        if (0 === $returnVar) {
-            return true;
-        } else {
-            return false;
+
+        //--------------------------------------------
+        //
+        //--------------------------------------------
+        public function import($moduleName, $modulesDir)
+        {
+            $output = [];
+            $returnVar = 0;
+            $cmd = 'cd "' . $modulesDir . '"; git clone https://github.com/' . $this->githubRepoName . '/' . $moduleName . '.git';
+            exec($cmd, $output, $returnVar);
+
+            if (0 === $returnVar) {
+                return true;
+            } else {
+                return false;
+            }
         }
     }
-}
 
 
+    class KamilleModulesImporter extends AbstractGithubHardcodedImporter
+    {
 
-
-
-
-
-class KamilleModulesImporter extends AbstractGithubHardcodedImporter
-{
-
-    private static $descriptions = [
-        "Connexion" => <<<EEE
+        private static $descriptions = [
+            "Connexion" => <<<EEE
 This module allows the user to log into the application, via a login form.
 It uses the Privilege framework under the hood.
 Tags: kaminos; lingtalfi
 EEE
-        ,
-        "GentelellaWebDirectory" => <<<EEE
+            ,
+            "GentelellaWebDirectory" => <<<EEE
 This module imports the gentelella admin theme into the web directory of your application.
 Tags: theme; bootstrap
 EEE
-        ,
-    ];
-
-    protected function getGithubRepositoryName()
-    {
-        return "KamilleModules";
-    }
-
-    protected function getDependencyMap()
-    {
-        return [
-            "Connexion" => ["GentelellaWebDirectory"],
-            "Core" => [],
-            "GentelellaWebDirectory" => [],
+            ,
         ];
-    }
 
-    public function getModuleDescription($moduleName)
-    {
-        if (array_key_exists($moduleName, self::$descriptions)) {
-            return self::$descriptions[$moduleName];
+        protected function getGithubRepositoryName()
+        {
+            return "KamilleModules";
         }
-        return "";
+
+        protected function getDependencyMap()
+        {
+            return [
+                "Connexion" => ["GentelellaWebDirectory"],
+                "Core" => [],
+                "GentelellaWebDirectory" => [],
+            ];
+        }
+
+        public function getModuleDescription($moduleName)
+        {
+            if (array_key_exists($moduleName, self::$descriptions)) {
+                return self::$descriptions[$moduleName];
+            }
+            return "";
+        }
     }
-}
 
 }
 // ------------------------------
@@ -910,14 +866,10 @@ EEE
 namespace Kamille\Module\Exception {
 
 
+    class ModuleException extends \Exception
+    {
 
-
-
-
-class ModuleException extends \Exception
-{
-
-}
+    }
 
 }
 // ------------------------------
@@ -925,30 +877,26 @@ class ModuleException extends \Exception
 namespace Kamille\Module {
 
 
+    use Kamille\Module\Exception\ModuleException;
+
+    interface ModuleInterface
+    {
 
 
+        /**
+         * @throws ModuleException when something wrong happens
+         * @return true if the install process is successful
+         */
+        public function install();
 
 
-use Kamille\Module\Exception\ModuleException;
+        /**
+         * @throws ModuleException when something wrong happens
+         * @return true if the uninstall process is successful
+         */
+        public function uninstall();
 
-interface ModuleInterface
-{
-
-
-    /**
-     * @throws ModuleException when something wrong happens
-     * @return true if the install process is successful
-     */
-    public function install();
-
-
-    /**
-     * @throws ModuleException when something wrong happens
-     * @return true if the uninstall process is successful
-     */
-    public function uninstall();
-
-}
+    }
 
 }
 // ------------------------------
@@ -956,27 +904,25 @@ interface ModuleInterface
 namespace CopyDir\Exception {
 
 
+    /*
+     * LingTalfi 2015-10-19
+     */
+    use Exception;
 
-
-/*
- * LingTalfi 2015-10-19
- */
-use Exception;
-
-class CopyDirException extends \Exception
-{
-
-
-    public $errorArray;
-
-    public function __construct($message = "", $code = 0, Exception $previous = null)
+    class CopyDirException extends \Exception
     {
-        parent::__construct($message, $code, $previous);
-        $this->errorArray = [];
+
+
+        public $errorArray;
+
+        public function __construct($message = "", $code = 0, Exception $previous = null)
+        {
+            parent::__construct($message, $code, $previous);
+            $this->errorArray = [];
+        }
+
+
     }
-
-
-}
 
 }
 // ------------------------------
@@ -984,487 +930,472 @@ class CopyDirException extends \Exception
 namespace CopyDir {
 
 
-
-
-/*
- * LingTalfi 2015-10-19
- */
-use CopyDir\Exception\CopyDirException;
-
-class CopyDirUtil
-{
-
-    /**
-     * @var bool: if true, throws an exception if anything goes wrong
-     *            if false (default), put errors in the errors array
+    /*
+     * LingTalfi 2015-10-19
      */
-    private $strictMode;
-    private $errors;
-    private $followFileLinks;
-    private $followDirLinks;
+    use CopyDir\Exception\CopyDirException;
 
-    /**
-     *    void      f (  str:src,  str:target,  &str:errMsg )
-     *
-     * This callback is called whenever we try to make a copy of a dir to an already existing
-     * entry which is either a file or a broken link.
-     *
-     * The default behaviour, if the callback is not defined (or do nothing) is to skip the copying of the
-     * directory and to add an error message indicating that an entry with the same name already existed.
-     *
-     * The callback has the opportunity to change this behaviour by changing the errMsg that will be produced,
-     * and/or by removing the existing entry and create a valid directory instead.
-     * Once the callback has been executed, the class will re-check whether or not a directory exist,
-     * and will use the new directory if found.
-     *
-     * If the directory has been recreated, the errMsg should be the empty string.
-     *
-     *
-     */
-    private $onDirConflict;
-
-    /**
-     * Same mechanism as onDirConflict, except that the target can be any type of file (file, symlink, dir).
-     * And also, there is no double checking that the file exists after the callback is called, the class
-     * just cares about the errMsg which can be either non empty or empty.
-     */
-    private $onFileConflict;
-    private $onFileLinkConflict;
-    private $onDirLinkConflict;
-    private $onBrokenLinkConflict;
-
-    /**
-     * void     f ( str:baseName, str:src, str:target, bool:&continue=true )
-     *
-     * This callback is triggered before directory entries are processed.
-     * It was originally designed to serve as a pre-filter (to filter out undesirable entries).
-     *
-     * If the callback sets the continue flag to false, the entry will be skip.
-     *
-     *
-     */
-    private $onCopyBefore;
-    /**
-     * void     f ( str:src, str:target )
-     *
-     * This callback is triggered:
-     * - every time a src directory is mapped to a target directory
-     * - every time a try to copy a src directory entry into its target correspondent is done
-     *
-     * This callback was originally designed to allow post chmoding of the target entries.
-     *
-     */
-    private $onCopyAfter;
-
-    public function __construct()
+    class CopyDirUtil
     {
-        $this->strictMode = false;
-        $this->errors = [];
-        $this->followFileLinks = false;
-        $this->followDirLinks = false;
-        $this->onDirConflict = false;
-        $this->onFileConflict = false;
-        $this->onFileLinkConflict = false;
-        $this->onDirLinkConflict = false;
-        $this->onBrokenLinkConflict = false;
-        $this->onCopyBefore = false;
-        $this->onCopyAfter = false;
-    }
 
+        /**
+         * @var bool: if true, throws an exception if anything goes wrong
+         *            if false (default), put errors in the errors array
+         */
+        private $strictMode;
+        private $errors;
+        private $followFileLinks;
+        private $followDirLinks;
 
-    public static function create()
-    {
-        return new static();
-    }
+        /**
+         *    void      f (  str:src,  str:target,  &str:errMsg )
+         *
+         * This callback is called whenever we try to make a copy of a dir to an already existing
+         * entry which is either a file or a broken link.
+         *
+         * The default behaviour, if the callback is not defined (or do nothing) is to skip the copying of the
+         * directory and to add an error message indicating that an entry with the same name already existed.
+         *
+         * The callback has the opportunity to change this behaviour by changing the errMsg that will be produced,
+         * and/or by removing the existing entry and create a valid directory instead.
+         * Once the callback has been executed, the class will re-check whether or not a directory exist,
+         * and will use the new directory if found.
+         *
+         * If the directory has been recreated, the errMsg should be the empty string.
+         *
+         *
+         */
+        private $onDirConflict;
 
+        /**
+         * Same mechanism as onDirConflict, except that the target can be any type of file (file, symlink, dir).
+         * And also, there is no double checking that the file exists after the callback is called, the class
+         * just cares about the errMsg which can be either non empty or empty.
+         */
+        private $onFileConflict;
+        private $onFileLinkConflict;
+        private $onDirLinkConflict;
+        private $onBrokenLinkConflict;
 
-    /**
-     * Copies/maps src to target.
-     *
-     * @return true if no error occurred, false otherwise,
-     *              or throws an exception if an error occurs and strict mode is on (strict mode is on by default).
-     * @throws CopyDirException
-     */
-    public function copyDir($src, $target)
-    {
-        if (2 === func_num_args()) {
+        /**
+         * void     f ( str:baseName, str:src, str:target, bool:&continue=true )
+         *
+         * This callback is triggered before directory entries are processed.
+         * It was originally designed to serve as a pre-filter (to filter out undesirable entries).
+         *
+         * If the callback sets the continue flag to false, the entry will be skip.
+         *
+         *
+         */
+        private $onCopyBefore;
+        /**
+         * void     f ( str:src, str:target )
+         *
+         * This callback is triggered:
+         * - every time a src directory is mapped to a target directory
+         * - every time a try to copy a src directory entry into its target correspondent is done
+         *
+         * This callback was originally designed to allow post chmoding of the target entries.
+         *
+         */
+        private $onCopyAfter;
+
+        public function __construct()
+        {
+            $this->strictMode = false;
             $this->errors = [];
+            $this->followFileLinks = false;
+            $this->followDirLinks = false;
+            $this->onDirConflict = false;
+            $this->onFileConflict = false;
+            $this->onFileLinkConflict = false;
+            $this->onDirLinkConflict = false;
+            $this->onBrokenLinkConflict = false;
+            $this->onCopyBefore = false;
+            $this->onCopyAfter = false;
         }
 
-        if (is_dir($src)) {
-            if (is_readable($src)) {
 
-                $cleanTarget = true;
-                // case where the target is a file or a broken link (it's supposed to be either a file or not exist)
-                if (
-                    is_file($target) ||
-                    (is_link($target) && (false === is_file($target) && false === is_dir($target)))
-                ) {
-                    $errMsg = "Cannot create dir $target, because an entry (of type file or broken link) with the same name was already found";
-                    if (is_callable($this->onDirConflict)) {
-                        call_user_func_array($this->onDirConflict, [$src, $target, &$errMsg]);
-                    }
-                    clearstatcache(); // not sure if needed for is_dir($target) call, so in doubt...
-                    if (!is_dir($target)) {
-                        $cleanTarget = false;
-                    }
-                    if ($errMsg) {
-                        $this->error($errMsg);
-                    }
-                }
+        public static function create()
+        {
+            return new static();
+        }
 
 
-                if (true === $cleanTarget) {
+        /**
+         * Copies/maps src to target.
+         *
+         * @return true if no error occurred, false otherwise,
+         *              or throws an exception if an error occurs and strict mode is on (strict mode is on by default).
+         * @throws CopyDirException
+         */
+        public function copyDir($src, $target)
+        {
+            if (2 === func_num_args()) {
+                $this->errors = [];
+            }
 
-                    $targetIsDir = true;
-                    if (!is_dir($target)) {
-                        if (false === mkdir($target, 0777, true)) {
-                            $this->error("Couldn't create the target dir: $target");
-                            $targetIsDir = false;
+            if (is_dir($src)) {
+                if (is_readable($src)) {
+
+                    $cleanTarget = true;
+                    // case where the target is a file or a broken link (it's supposed to be either a file or not exist)
+                    if (
+                        is_file($target) ||
+                        (is_link($target) && (false === is_file($target) && false === is_dir($target)))
+                    ) {
+                        $errMsg = "Cannot create dir $target, because an entry (of type file or broken link) with the same name was already found";
+                        if (is_callable($this->onDirConflict)) {
+                            call_user_func_array($this->onDirConflict, [$src, $target, &$errMsg]);
+                        }
+                        clearstatcache(); // not sure if needed for is_dir($target) call, so in doubt...
+                        if (!is_dir($target)) {
+                            $cleanTarget = false;
+                        }
+                        if ($errMsg) {
+                            $this->error($errMsg);
                         }
                     }
-                    if (true === $targetIsDir) {
-
-                        $this->_onCopyAfter($src, $target);
 
 
-                        if (is_writable($target)) {
-                            $files = scandir($src);
-                            foreach ($files as $baseName) {
-                                if ('.' !== $baseName && '..' !== $baseName) {
+                    if (true === $cleanTarget) {
+
+                        $targetIsDir = true;
+                        if (!is_dir($target)) {
+                            if (false === mkdir($target, 0777, true)) {
+                                $this->error("Couldn't create the target dir: $target");
+                                $targetIsDir = false;
+                            }
+                        }
+                        if (true === $targetIsDir) {
+
+                            $this->_onCopyAfter($src, $target);
 
 
-                                    $file = $src . '/' . $baseName;
-                                    $targetFile = $target . '/' . $baseName;
+                            if (is_writable($target)) {
+                                $files = scandir($src);
+                                foreach ($files as $baseName) {
+                                    if ('.' !== $baseName && '..' !== $baseName) {
 
 
-                                    $continue = true;
-                                    if (is_callable($this->onCopyBefore)) {
-                                        call_user_func_array($this->onCopyBefore, [$baseName, $file, $targetFile, &$continue]);
-                                    }
+                                        $file = $src . '/' . $baseName;
+                                        $targetFile = $target . '/' . $baseName;
 
 
-                                    if (true === $continue) {
-
-                                        $isProcessedAsLink = false;
-                                        if (is_link($file)) {
-                                            if (is_file($file)) {
-                                                if (false === $this->followFileLinks) {
-                                                    $isProcessedAsLink = true;
-                                                    $this->copyFileLink($file, $targetFile);
-                                                }
-                                            }
-                                            elseif (is_dir($file)) {
-                                                if (false === $this->followDirLinks) {
-                                                    $isProcessedAsLink = true;
-                                                    $this->copyDirLink($file, $targetFile);
-                                                }
-                                            }
-                                            else {
-                                                // broken link
-                                                $isProcessedAsLink = true;
-                                                $this->copyBrokenLink($file, $targetFile);
-                                            }
+                                        $continue = true;
+                                        if (is_callable($this->onCopyBefore)) {
+                                            call_user_func_array($this->onCopyBefore, [$baseName, $file, $targetFile, &$continue]);
                                         }
 
 
-                                        if (false === $isProcessedAsLink) {
-                                            if (is_file($file)) {
-                                                $this->copyFile($file, $targetFile);
+                                        if (true === $continue) {
+
+                                            $isProcessedAsLink = false;
+                                            if (is_link($file)) {
+                                                if (is_file($file)) {
+                                                    if (false === $this->followFileLinks) {
+                                                        $isProcessedAsLink = true;
+                                                        $this->copyFileLink($file, $targetFile);
+                                                    }
+                                                } elseif (is_dir($file)) {
+                                                    if (false === $this->followDirLinks) {
+                                                        $isProcessedAsLink = true;
+                                                        $this->copyDirLink($file, $targetFile);
+                                                    }
+                                                } else {
+                                                    // broken link
+                                                    $isProcessedAsLink = true;
+                                                    $this->copyBrokenLink($file, $targetFile);
+                                                }
                                             }
-                                            elseif (is_dir($file)) {
-                                                $this->copyDir($file, $targetFile, true);
+
+
+                                            if (false === $isProcessedAsLink) {
+                                                if (is_file($file)) {
+                                                    $this->copyFile($file, $targetFile);
+                                                } elseif (is_dir($file)) {
+                                                    $this->copyDir($file, $targetFile, true);
+                                                }
                                             }
                                         }
                                     }
                                 }
+                            } else {
+                                $this->error("Target dir must be writable: $target");
                             }
                         }
-                        else {
-                            $this->error("Target dir must be writable: $target");
-                        }
                     }
+                } else {
+                    $this->error("src is not readable: $src");
+                }
+            } else {
+                $this->error("src is not a dir: $src");
+            }
+
+
+            // handling errors
+            if (true === $this->strictMode && $this->errors) {
+                $m = 'The following errors have occurred: ' . implode(', ', $this->errors);
+                $e = new CopyDirException($m);
+                $e->errorArray = $this->errors;
+                throw $e;
+            }
+            return (0 === count($this->errors));
+        }
+
+
+
+        //------------------------------------------------------------------------------/
+        //
+        //------------------------------------------------------------------------------/
+        public function setStrictMode($strictMode)
+        {
+            $this->strictMode = (bool)$strictMode;
+            return $this;
+        }
+
+        public function getErrors()
+        {
+            return $this->errors;
+        }
+
+        public function setFollowDirLinks($followDirLinks)
+        {
+            $this->followDirLinks = (bool)$followDirLinks;
+            return $this;
+        }
+
+        public function setFollowFileLinks($followFileLinks)
+        {
+            $this->followFileLinks = (bool)$followFileLinks;
+            return $this;
+        }
+
+        public function setOnBrokenLinkConflict($onBrokenLinkConflict)
+        {
+            $this->onBrokenLinkConflict = $onBrokenLinkConflict;
+            return $this;
+        }
+
+        public function setOnCopyAfter($onCopyAfter)
+        {
+            $this->onCopyAfter = $onCopyAfter;
+            return $this;
+        }
+
+        public function setOnCopyBefore($onCopyBefore)
+        {
+            $this->onCopyBefore = $onCopyBefore;
+            return $this;
+        }
+
+        public function setOnDirConflict($onDirConflict)
+        {
+            $this->onDirConflict = $onDirConflict;
+            return $this;
+        }
+
+        public function setOnDirLinkConflict($onDirLinkConflict)
+        {
+            $this->onDirLinkConflict = $onDirLinkConflict;
+            return $this;
+        }
+
+        public function setOnFileConflict($onFileConflict)
+        {
+            $this->onFileConflict = $onFileConflict;
+            return $this;
+        }
+
+        public function setOnFileLinkConflict($onFileLinkConflict)
+        {
+            $this->onFileLinkConflict = $onFileLinkConflict;
+            return $this;
+        }
+
+
+
+        //------------------------------------------------------------------------------/
+        //
+        //------------------------------------------------------------------------------/
+        private function copyFile($src, $target)
+        {
+            $this->copyThing($src, $target, "file", "onFileConflict");
+        }
+
+        private function copyFileLink($src, $target)
+        {
+            $this->copyThing($src, $target, "file link", "onFileLinkConflict");
+        }
+
+        private function copyDirLink($src, $target)
+        {
+            $this->copyThing($src, $target, "dir link", "onDirLinkConflict");
+        }
+
+        private function copyBrokenLink($src, $target)
+        {
+            $this->copyThing($src, $target, "broken link", "onBrokenLinkConflict");
+        }
+
+
+        private function copyThing($src, $target, $type, $callback)
+        {
+            if (!file_exists($target) && !is_link($target)) {
+                switch ($type) {
+                    case 'dir link':
+                    case 'file link':
+                    case 'broken link':
+                        $link = readlink($src);
+                        if (false === symlink($link, $target)) {
+                            $this->error("Could not copy $type $src to $target");
+                        }
+                        break;
+                    default:
+                        if (false === copy($src, $target)) {
+                            $this->error("Could not copy $type $src to $target");
+                        }
+                        break;
+                }
+            } else {
+                $errMsg = "Couldn't create $type $target, because an entry with the same name already existed";
+                $this->onConflict($src, $target, $errMsg, $callback, $type);
+                if ($errMsg) {
+                    $this->error($errMsg);
                 }
             }
-            else {
-                $this->error("src is not readable: $src");
+            $this->_onCopyAfter($src, $target);
+        }
+
+
+        //------------------------------------------------------------------------------/
+        //
+        //------------------------------------------------------------------------------/
+        protected function onConflict($src, $target, &$errMsg, $callback, $type)
+        {
+            if (is_callable($this->$callback)) {
+                call_user_func_array($this->$callback, [$src, $target, &$errMsg]);
             }
         }
-        else {
-            $this->error("src is not a dir: $src");
-        }
 
 
-        // handling errors
-        if (true === $this->strictMode && $this->errors) {
-            $m = 'The following errors have occurred: ' . implode(', ', $this->errors);
-            $e = new CopyDirException($m);
-            $e->errorArray = $this->errors;
-            throw $e;
-        }
-        return (0 === count($this->errors));
-    }
-
-
-
-    //------------------------------------------------------------------------------/
-    // 
-    //------------------------------------------------------------------------------/
-    public function setStrictMode($strictMode)
-    {
-        $this->strictMode = (bool)$strictMode;
-        return $this;
-    }
-
-    public function getErrors()
-    {
-        return $this->errors;
-    }
-
-    public function setFollowDirLinks($followDirLinks)
-    {
-        $this->followDirLinks = (bool)$followDirLinks;
-        return $this;
-    }
-
-    public function setFollowFileLinks($followFileLinks)
-    {
-        $this->followFileLinks = (bool)$followFileLinks;
-        return $this;
-    }
-
-    public function setOnBrokenLinkConflict($onBrokenLinkConflict)
-    {
-        $this->onBrokenLinkConflict = $onBrokenLinkConflict;
-        return $this;
-    }
-
-    public function setOnCopyAfter($onCopyAfter)
-    {
-        $this->onCopyAfter = $onCopyAfter;
-        return $this;
-    }
-
-    public function setOnCopyBefore($onCopyBefore)
-    {
-        $this->onCopyBefore = $onCopyBefore;
-        return $this;
-    }
-
-    public function setOnDirConflict($onDirConflict)
-    {
-        $this->onDirConflict = $onDirConflict;
-        return $this;
-    }
-
-    public function setOnDirLinkConflict($onDirLinkConflict)
-    {
-        $this->onDirLinkConflict = $onDirLinkConflict;
-        return $this;
-    }
-
-    public function setOnFileConflict($onFileConflict)
-    {
-        $this->onFileConflict = $onFileConflict;
-        return $this;
-    }
-
-    public function setOnFileLinkConflict($onFileLinkConflict)
-    {
-        $this->onFileLinkConflict = $onFileLinkConflict;
-        return $this;
-    }
-
-
-
-    //------------------------------------------------------------------------------/
-    // 
-    //------------------------------------------------------------------------------/
-    private function copyFile($src, $target)
-    {
-        $this->copyThing($src, $target, "file", "onFileConflict");
-    }
-
-    private function copyFileLink($src, $target)
-    {
-        $this->copyThing($src, $target, "file link", "onFileLinkConflict");
-    }
-
-    private function copyDirLink($src, $target)
-    {
-        $this->copyThing($src, $target, "dir link", "onDirLinkConflict");
-    }
-
-    private function copyBrokenLink($src, $target)
-    {
-        $this->copyThing($src, $target, "broken link", "onBrokenLinkConflict");
-    }
-
-
-    private function copyThing($src, $target, $type, $callback)
-    {
-        if (!file_exists($target) && !is_link($target)) {
-            switch ($type) {
-                case 'dir link':
-                case 'file link':
-                case 'broken link':
-                    $link = readlink($src);
-                    if (false === symlink($link, $target)) {
-                        $this->error("Could not copy $type $src to $target");
-                    }
-                    break;
-                default:
-                    if (false === copy($src, $target)) {
-                        $this->error("Could not copy $type $src to $target");
-                    }
-                    break;
+        protected function _onCopyAfter($src, $target)
+        {
+            if (is_callable($this->onCopyAfter)) {
+                call_user_func($this->onCopyAfter, $src, $target);
             }
         }
-        else {
-            $errMsg = "Couldn't create $type $target, because an entry with the same name already existed";
-            $this->onConflict($src, $target, $errMsg, $callback, $type);
-            if ($errMsg) {
-                $this->error($errMsg);
+
+        protected function error($m)
+        {
+            $this->errors[] = $m;
+        }
+    }
+
+
+    /*
+     * LingTalfi 2015-10-19
+     *
+     * Features:
+     * - on file conflict: if the target is a file, its content gets replaced with
+     *          the content of the src.
+     * - by default ignore conflict errors
+     * - can handle mapping of permissions
+     *
+     *
+     */
+
+    class AuthorCopyDirUtil extends CopyDirUtil
+    {
+
+        private $applyPerms;
+        private $applyOwner;
+        private $ignoreConflictErrors;
+
+        public function __construct()
+        {
+            parent::__construct();
+            $this->applyOwner = false;
+            $this->applyPerms = false;
+            $this->ignoreConflictErrors = true;
+        }
+
+        public function setPreservePerms($bool)
+        {
+            $bool = (bool)$bool;
+            $this->applyOwner = $bool;
+            $this->applyPerms = $bool;
+            return $this;
+        }
+
+        public function setIgnoreConflictErrors($ignoreConflictErrors)
+        {
+            $this->ignoreConflictErrors = (bool)$ignoreConflictErrors;
+            return $this;
+        }
+
+
+
+
+
+
+        //------------------------------------------------------------------------------/
+        //
+        //------------------------------------------------------------------------------/
+        protected function onConflict($src, $target, &$errMsg, $callback, $type)
+        {
+            if ('onFileConflict' === $callback) {
+                if (is_file($target)) {
+                    copy($src, $target);
+                    $errMsg = null;
+                }
             }
-        }
-        $this->_onCopyAfter($src, $target);
-    }
-
-
-    //------------------------------------------------------------------------------/
-    // 
-    //------------------------------------------------------------------------------/
-    protected function onConflict($src, $target, &$errMsg, $callback, $type)
-    {
-        if (is_callable($this->$callback)) {
-            call_user_func_array($this->$callback, [$src, $target, &$errMsg]);
-        }
-    }
-
-
-    protected function _onCopyAfter($src, $target)
-    {
-        if (is_callable($this->onCopyAfter)) {
-            call_user_func($this->onCopyAfter, $src, $target);
-        }
-    }
-
-    protected function error($m)
-    {
-        $this->errors[] = $m;
-    }
-}
-
-
-
-
-
-/*
- * LingTalfi 2015-10-19
- * 
- * Features:
- * - on file conflict: if the target is a file, its content gets replaced with
- *          the content of the src. 
- * - by default ignore conflict errors
- * - can handle mapping of permissions
- * 
- * 
- */
-
-class AuthorCopyDirUtil extends CopyDirUtil
-{
-
-    private $applyPerms;
-    private $applyOwner;
-    private $ignoreConflictErrors;
-
-    public function __construct()
-    {
-        parent::__construct();
-        $this->applyOwner = false;
-        $this->applyPerms = false;
-        $this->ignoreConflictErrors = true;
-    }
-
-    public function setPreservePerms($bool)
-    {
-        $bool = (bool)$bool;
-        $this->applyOwner = $bool;
-        $this->applyPerms = $bool;
-        return $this;
-    }
-
-    public function setIgnoreConflictErrors($ignoreConflictErrors)
-    {
-        $this->ignoreConflictErrors = (bool)$ignoreConflictErrors;
-        return $this;
-    }
-
-
-
-
-
-
-    //------------------------------------------------------------------------------/
-    // 
-    //------------------------------------------------------------------------------/
-    protected function onConflict($src, $target, &$errMsg, $callback, $type)
-    {
-        if ('onFileConflict' === $callback) {
-            if (is_file($target)) {
-                copy($src, $target);
+            if (true === $this->ignoreConflictErrors) {
                 $errMsg = null;
             }
+            parent::onConflict($src, $target, $errMsg, $callback, $type);
         }
-        if (true === $this->ignoreConflictErrors) {
-            $errMsg = null;
-        }
-        parent::onConflict($src, $target, $errMsg, $callback, $type);
-    }
 
-    protected function _onCopyAfter($src, $target)
-    {
-        if (is_link($src) && false === is_file($src) && false === is_dir($src)) {
-            // broken link case, we don't need to chmod it
-        }
-        else {
-            if (true === $this->applyPerms) {
-                $octal = substr(sprintf('%o', fileperms($src)), -4);
-                if (false === chmod($target, octdec($octal))) {
-                    $this->error("Cannot chmod $target with perms $octal");
-                }
-            }
-            if (true === $this->applyOwner) {
-                if (false !== ($owner = fileowner($src))) {
-                    if (false !== ($ownerGroup = filegroup($src))) {
-                        if (false === chown($target, $owner)) {
-                            if (true === extension_loaded('posix')) {
-                                $owner = posix_getpwuid($owner)['name'];
-                            }
-                            $this->error("Could not chown for $target with owner=$owner");
-                        }
-                        if (false === chgrp($target, $ownerGroup)) {
-                            if (true === extension_loaded('posix')) {
-                                $ownerGroup = posix_getgrgid($ownerGroup)['name'];
-                            }
-                            $this->error("Could not chgrp for $target with owner=$ownerGroup");
-                        }
-
-                    }
-                    else {
-                        $this->error("Couldn't access group owner information for $src");
+        protected function _onCopyAfter($src, $target)
+        {
+            if (is_link($src) && false === is_file($src) && false === is_dir($src)) {
+                // broken link case, we don't need to chmod it
+            } else {
+                if (true === $this->applyPerms) {
+                    $octal = substr(sprintf('%o', fileperms($src)), -4);
+                    if (false === chmod($target, octdec($octal))) {
+                        $this->error("Cannot chmod $target with perms $octal");
                     }
                 }
-                else {
-                    $this->error("Couldn't access file owner information for $src");
+                if (true === $this->applyOwner) {
+                    if (false !== ($owner = fileowner($src))) {
+                        if (false !== ($ownerGroup = filegroup($src))) {
+                            if (false === chown($target, $owner)) {
+                                if (true === extension_loaded('posix')) {
+                                    $owner = posix_getpwuid($owner)['name'];
+                                }
+                                $this->error("Could not chown for $target with owner=$owner");
+                            }
+                            if (false === chgrp($target, $ownerGroup)) {
+                                if (true === extension_loaded('posix')) {
+                                    $ownerGroup = posix_getgrgid($ownerGroup)['name'];
+                                }
+                                $this->error("Could not chgrp for $target with owner=$ownerGroup");
+                            }
+
+                        } else {
+                            $this->error("Couldn't access group owner information for $src");
+                        }
+                    } else {
+                        $this->error("Couldn't access file owner information for $src");
+                    }
                 }
             }
+            parent::_onCopyAfter($src, $target);
         }
-        parent::_onCopyAfter($src, $target);
+
+
     }
-
-
-}
 
 }
 // ------------------------------
@@ -1472,395 +1403,391 @@ class AuthorCopyDirUtil extends CopyDirUtil
 namespace Bat {
 
 
-
-
-/*
- * LingTalfi 2015-10-07
- */
-use CopyDir\AuthorCopyDirUtil;
-
-
-class FileSystemTool
-{
-
-
-    /**
-     * Ensures that a directory exist and is empty.
-     *
-     * It is considered a success if the directory exists and is empty, and a failure otherwise.
-     *
-     * By default, the method throws an exception in case of failure.
-     *
-     * If you set the throwEx flag to false, then this method will return true in case of success,
-     * and false in case of failure.
-     *
-     *
+    /*
+     * LingTalfi 2015-10-07
      */
-    public static function clearDir($file, $throwEx = true)
-    {
-        if (true === self::mkdir($file, 0777, true)) {
-            $files = new \FilesystemIterator($file,
-                \FilesystemIterator::KEY_AS_PATHNAME |
-                \FilesystemIterator::CURRENT_AS_FILEINFO |
-                \FilesystemIterator::SKIP_DOTS
-            );
-            foreach ($files as $f) {
-                if (false === self::_remove($f, $throwEx)) {
-                    return false;
-                }
-            }
-            return true;
-        }
-        return self::_oops("Cannot create the dir $file", $throwEx);
-    }
+    use CopyDir\AuthorCopyDirUtil;
 
 
-    /**
-     * Copies a directory to a given location.
-     */
-    public static function copyDir($src, $target, $preservePerms = false, &$errors = [])
-    {
-        $o = AuthorCopyDirUtil::create();
-        $o->setPreservePerms($preservePerms);
-        $ret = $o->copyDir($src, $target);
-        $errors = $o->getErrors();
-        return $ret;
-    }
-
-
-    /**
-     * Returns true only if:
-     * - dir exists
-     * - file exists and is located under the dir
-     *
-     */
-    public static function existsUnder($file, $dir)
-    {
-        if (false !== ($rDir = realpath($dir))) {
-            if (false !== ($rFile = realpath($file))) {
-                return ($rDir === substr($rFile, 0, strlen($rDir)));
-            }
-        }
-        return false;
-    }
-
-
-    /**
-     * Returns the file extension as defined here: https://github.com/lingtalfi/ConventionGuy/blob/master/nomenclature.fileName.eng.md
-     * @return string
-     */
-    public static function getFileExtension($file)
-    {
-        if (is_string($file)) {
-            $file = basename($file);
-            if ('.' === $file[0]) {
-                if ('.' === $file) {
-                    return '';
-                }
-                $file = substr($file, 1);
-            }
-        } else {
-            throw new \InvalidArgumentException(sprintf("file argument must be of type string, %s given", gettype($file)));
-        }
-        return pathinfo($file, PATHINFO_EXTENSION);
-    }
-
-    /**
-     * Returns the file name as defined here: https://github.com/lingtalfi/ConventionGuy/blob/master/nomenclature.fileName.eng.md
-     * The file name without the last extension.
-     */
-    public static function getFileName($file)
-    {
-        if (is_string($file)) {
-            $file = basename($file);
-            if ('.' === $file[0]) {
-                $p = explode('.', $file);
-                if (count($p) > 2) {
-                    array_pop($p);
-                }
-                return implode('.', $p);
-            }
-        } else {
-            throw new \InvalidArgumentException(sprintf("file argument must be of type string, %s given", gettype($file)));
-        }
-        return pathinfo($file, PATHINFO_FILENAME);
-    }
-
-
-    /**
-     * Returns the size in bytes of a given file.
-     * The file can be an url starting with http:// https://, or a filesystem file.
-     *
-     * @return int|false in case of failure (file not existing for instance)
-     */
-    public static function getFileSize($file)
+    class FileSystemTool
     {
 
-        if (
-            'http://' === substr($file, 0, 7) ||
-            'https://' === substr($file, 0, 8)
-        ) {
-            if (true === extension_loaded('curl')) {
-                $ch = curl_init();
-                curl_setopt($ch, CURLOPT_URL, $file);
-                curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                curl_setopt($ch, CURLOPT_HEADER, true);
-                curl_setopt($ch, CURLOPT_NOBODY, true);
-                curl_setopt($ch, CURLOPT_TIMEOUT, 10); // mitigate slowloris attacks http://php.net/manual/en/function.get-headers.php#117189
-                curl_exec($ch);
-                return (int)curl_getinfo($ch, CURLINFO_CONTENT_LENGTH_DOWNLOAD);
-            } else {
-                $head = array_change_key_case(get_headers($file, 1));
-                return (int)$head['content-length'];
-            }
-        } else {
-            return filesize($file);
-        }
-    }
 
-
-    /**
-     * Returns a generator function, which can iterate over the lines of the given file.
-     */
-    public static function fileGenerator($file, $ignoreTrailingNewLines = true)
-    {
-        return function () use ($file, $ignoreTrailingNewLines) {
-            $f = fopen($file, 'r');
-            try {
-                while ($line = fgets($f)) {
-                    if (true === $ignoreTrailingNewLines) {
-                        yield rtrim($line, PHP_EOL);
-                    } else {
-                        yield $line;
-                    }
-                }
-            } finally {
-                fclose($f);
-            }
-        };
-    }
-
-
-    /**
-     *
-     * Ensures that a directory exists.
-     *
-     * It uses the same arguments as the php native mkdir function.
-     * bool mkdir ( string $pathname [, int $mode = 0777 [, bool $recursive = false [, resource $context ]]] )
-     *
-     *
-     * It is considered a success when the dir exists and is a dir (not a file or a link),
-     *      and there were no permissions errors.
-     *
-     * It is considered a failure otherwise.
-     *
-     *
-     * This method returns true in case of success, and false in case of failure.
-     * If a link or a file resides at the location where you want to create the dir, this
-     * method will not try to remove the existing link or file and will fail.
-     *
-     */
-    public static function mkdir($pathName, $mode = 0777, $recursive = false)
-    {
-        if (file_exists($pathName) && is_dir($pathName) && !is_link($pathName)) {
-            return true;
-        }
-        if (4 === func_num_args()) {
-            return mkdir($pathName, $mode, $recursive, func_get_args()[3]);
-        }
-        return mkdir($pathName, $mode, $recursive);
-    }
-
-
-    /**
-     *
-     * Ensures that a directory exists, or throws an exception if something wrong happens.
-     *
-     * It uses the same arguments as the php native mkdir function.
-     * bool mkdir ( string $pathname [, int $mode = 0777 [, bool $recursive = false [, resource $context ]]] )
-     *
-     *
-     * It is considered a success when the dir exists and is a dir (not a file or a link),
-     *      and there were no permissions errors.
-     *
-     * It is considered a failure otherwise.
-     *
-     *
-     * This method returns true in case of success, and false in case of failure.
-     * If a link or a file resides at the location where you want to create the dir, this
-     * method will not try to remove the existing link or file and will fail.
-     *
-     * @return bool
-     * @throws \Exception
-     */
-    public static function mkdirDone($pathName, $mode = 0777, $recursive = true)
-    {
-        if (4 === func_num_args()) {
-            $ret = mkdir($pathName, $mode, $recursive, func_get_args()[3]);
-        } else {
-            $ret = mkdir($pathName, $mode, $recursive);
-        }
-        if (false === $ret) {
-            throw new \Exception("Could not make dir $pathName");
-        }
-        return true;
-    }
-
-
-    /**
-     *
-     * Creates a file, and the intermediary directories if necessary.
-     *
-     * @return bool,
-     *      true if the file exists when the method has been executed
-     *      false if the file couldn't be created
-     */
-    public static function mkfile($pathName, $data = '', $dirMode = 0777)
-    {
-        if (true === FileSystemTool::mkdir(dirname($pathName), $dirMode, true)) {
-            if (false !== file_put_contents($pathName, $data)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-
-    /**
-     * Removes an entry from the filesystem.
-     * The entry can be:
-     *
-     * - a link, then the link only is removed (not the target)
-     * - a file, then the file is removed
-     * - a directory, the the directory is removed recursively
-     *
-     * It is considered a success when the entry doesn't exist on the filesystem at the end,
-     * and a failure otherwise.
-     *
-     * By default, the method throws an exception in case of failure.
-     *
-     * If you set the throwEx flag to false, then this method will return true in case of success,
-     * and false in case of failure.
-     *
-     */
-    public static function remove($file, $throwEx = true)
-    {
-        if (false === is_link($file)) {
-            if (file_exists($file)) {
-                return self::_remove($file, $throwEx);
-            } else {
-                return true;
-            }
-        } else {
-            if (false === unlink($file)) {
-                return self::_oops("Cannot remove link $file", $throwEx);
-            }
-            return true;
-        }
-    }
-
-
-    /**
-     * http://stackoverflow.com/questions/1707801/making-a-temporary-dir-for-unpacking-a-zipfile-into
-     */
-    public static function tempDir($dir = null, $prefix = null)
-    {
-        if (null === $dir) {
-            $dir = sys_get_temp_dir();
-        }
-        if (null === $prefix) {
-            $prefix = '';
-        }
-        $tempfile = tempnam($dir, $prefix);
-        if (file_exists($tempfile)) {
-            unlink($tempfile);
-        }
-        mkdir($tempfile);
-        if (is_dir($tempfile)) {
-            return $tempfile;
-        }
-        return false;
-    }
-
-
-
-
-    /**
-     *
-     * Works like php's native touch function, except that intermediate dirs are created if necessary,
-     * and that the method throws an Exception if something goes wrong.
-     *
-     * bool touch ( string $filename [, int $time = time() [, int $atime ]] )
-     *
-     */
-    public static function touchDone($fileName)
-    {
-        if (is_string($fileName)) {
-            $dir = dirname($fileName);
-            if (false === FileSystemTool::mkdir($dir, 0777, true)) {
-                throw new \Exception("Could not create dir: $dir");
-            }
-            $n = func_num_args();
-            if (1 === $n) {
-                $ret = touch($fileName);
-            } elseif (2 === $n) {
-                $ret = touch($fileName, func_get_arg(1));
-            } elseif (3 === $n) {
-                $ret = touch($fileName, func_get_arg(1), func_get_arg(2));
-            }
-            if (false === $ret) {
-                throw new \Exception("Could not touch the file $fileName");
-            }
-        } else {
-            throw new \InvalidArgumentException(sprintf("fileName argument must be of type string, %s given", gettype($fileName)));
-        }
-    }
-
-
-    //------------------------------------------------------------------------------/
-    // 
-    //------------------------------------------------------------------------------/
-    private static function _oops($m, $throwEx = true)
-    {
-        if (true === $throwEx) {
-            throw new \Exception($m);
-        }
-        return false;
-    }
-
-    private static function _remove($file, $throwEx = true)
-    {
-        if (is_dir($file) && !is_link($file)) {
-            if (is_readable($file)) {
+        /**
+         * Ensures that a directory exist and is empty.
+         *
+         * It is considered a success if the directory exists and is empty, and a failure otherwise.
+         *
+         * By default, the method throws an exception in case of failure.
+         *
+         * If you set the throwEx flag to false, then this method will return true in case of success,
+         * and false in case of failure.
+         *
+         *
+         */
+        public static function clearDir($file, $throwEx = true)
+        {
+            if (true === self::mkdir($file, 0777, true)) {
                 $files = new \FilesystemIterator($file,
                     \FilesystemIterator::KEY_AS_PATHNAME |
                     \FilesystemIterator::CURRENT_AS_FILEINFO |
                     \FilesystemIterator::SKIP_DOTS
                 );
                 foreach ($files as $f) {
-                    self::_remove($f, $throwEx);
-                }
-                if (false === rmdir($file)) {
-                    return self::_oops("Cannot remove dir $file", $throwEx);
+                    if (false === self::_remove($f, $throwEx)) {
+                        return false;
+                    }
                 }
                 return true;
-            } else {
-                return self::_oops("Cannot remove unreadable dir $file", $throwEx);
             }
-        } else {
-            if (true === is_file($file) || true === is_link($file)) {
-                if (false === unlink($file)) {
-                    if (true === is_link($file)) {
-                        return self::_oops("Cannot remove link $file", $throwEx);
+            return self::_oops("Cannot create the dir $file", $throwEx);
+        }
+
+
+        /**
+         * Copies a directory to a given location.
+         */
+        public static function copyDir($src, $target, $preservePerms = false, &$errors = [])
+        {
+            $o = AuthorCopyDirUtil::create();
+            $o->setPreservePerms($preservePerms);
+            $ret = $o->copyDir($src, $target);
+            $errors = $o->getErrors();
+            return $ret;
+        }
+
+
+        /**
+         * Returns true only if:
+         * - dir exists
+         * - file exists and is located under the dir
+         *
+         */
+        public static function existsUnder($file, $dir)
+        {
+            if (false !== ($rDir = realpath($dir))) {
+                if (false !== ($rFile = realpath($file))) {
+                    return ($rDir === substr($rFile, 0, strlen($rDir)));
+                }
+            }
+            return false;
+        }
+
+
+        /**
+         * Returns the file extension as defined here: https://github.com/lingtalfi/ConventionGuy/blob/master/nomenclature.fileName.eng.md
+         * @return string
+         */
+        public static function getFileExtension($file)
+        {
+            if (is_string($file)) {
+                $file = basename($file);
+                if ('.' === $file[0]) {
+                    if ('.' === $file) {
+                        return '';
                     }
-                    return self::_oops("Cannot remove file $file", $throwEx);
+                    $file = substr($file, 1);
+                }
+            } else {
+                throw new \InvalidArgumentException(sprintf("file argument must be of type string, %s given", gettype($file)));
+            }
+            return pathinfo($file, PATHINFO_EXTENSION);
+        }
+
+        /**
+         * Returns the file name as defined here: https://github.com/lingtalfi/ConventionGuy/blob/master/nomenclature.fileName.eng.md
+         * The file name without the last extension.
+         */
+        public static function getFileName($file)
+        {
+            if (is_string($file)) {
+                $file = basename($file);
+                if ('.' === $file[0]) {
+                    $p = explode('.', $file);
+                    if (count($p) > 2) {
+                        array_pop($p);
+                    }
+                    return implode('.', $p);
+                }
+            } else {
+                throw new \InvalidArgumentException(sprintf("file argument must be of type string, %s given", gettype($file)));
+            }
+            return pathinfo($file, PATHINFO_FILENAME);
+        }
+
+
+        /**
+         * Returns the size in bytes of a given file.
+         * The file can be an url starting with http:// https://, or a filesystem file.
+         *
+         * @return int|false in case of failure (file not existing for instance)
+         */
+        public static function getFileSize($file)
+        {
+
+            if (
+                'http://' === substr($file, 0, 7) ||
+                'https://' === substr($file, 0, 8)
+            ) {
+                if (true === extension_loaded('curl')) {
+                    $ch = curl_init();
+                    curl_setopt($ch, CURLOPT_URL, $file);
+                    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+                    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                    curl_setopt($ch, CURLOPT_HEADER, true);
+                    curl_setopt($ch, CURLOPT_NOBODY, true);
+                    curl_setopt($ch, CURLOPT_TIMEOUT, 10); // mitigate slowloris attacks http://php.net/manual/en/function.get-headers.php#117189
+                    curl_exec($ch);
+                    return (int)curl_getinfo($ch, CURLINFO_CONTENT_LENGTH_DOWNLOAD);
+                } else {
+                    $head = array_change_key_case(get_headers($file, 1));
+                    return (int)$head['content-length'];
+                }
+            } else {
+                return filesize($file);
+            }
+        }
+
+
+        /**
+         * Returns a generator function, which can iterate over the lines of the given file.
+         */
+        public static function fileGenerator($file, $ignoreTrailingNewLines = true)
+        {
+            return function () use ($file, $ignoreTrailingNewLines) {
+                $f = fopen($file, 'r');
+                try {
+                    while ($line = fgets($f)) {
+                        if (true === $ignoreTrailingNewLines) {
+                            yield rtrim($line, PHP_EOL);
+                        } else {
+                            yield $line;
+                        }
+                    }
+                } finally {
+                    fclose($f);
+                }
+            };
+        }
+
+
+        /**
+         *
+         * Ensures that a directory exists.
+         *
+         * It uses the same arguments as the php native mkdir function.
+         * bool mkdir ( string $pathname [, int $mode = 0777 [, bool $recursive = false [, resource $context ]]] )
+         *
+         *
+         * It is considered a success when the dir exists and is a dir (not a file or a link),
+         *      and there were no permissions errors.
+         *
+         * It is considered a failure otherwise.
+         *
+         *
+         * This method returns true in case of success, and false in case of failure.
+         * If a link or a file resides at the location where you want to create the dir, this
+         * method will not try to remove the existing link or file and will fail.
+         *
+         */
+        public static function mkdir($pathName, $mode = 0777, $recursive = false)
+        {
+            if (file_exists($pathName) && is_dir($pathName) && !is_link($pathName)) {
+                return true;
+            }
+            if (4 === func_num_args()) {
+                return mkdir($pathName, $mode, $recursive, func_get_args()[3]);
+            }
+            return mkdir($pathName, $mode, $recursive);
+        }
+
+
+        /**
+         *
+         * Ensures that a directory exists, or throws an exception if something wrong happens.
+         *
+         * It uses the same arguments as the php native mkdir function.
+         * bool mkdir ( string $pathname [, int $mode = 0777 [, bool $recursive = false [, resource $context ]]] )
+         *
+         *
+         * It is considered a success when the dir exists and is a dir (not a file or a link),
+         *      and there were no permissions errors.
+         *
+         * It is considered a failure otherwise.
+         *
+         *
+         * This method returns true in case of success, and false in case of failure.
+         * If a link or a file resides at the location where you want to create the dir, this
+         * method will not try to remove the existing link or file and will fail.
+         *
+         * @return bool
+         * @throws \Exception
+         */
+        public static function mkdirDone($pathName, $mode = 0777, $recursive = true)
+        {
+            if (4 === func_num_args()) {
+                $ret = mkdir($pathName, $mode, $recursive, func_get_args()[3]);
+            } else {
+                $ret = mkdir($pathName, $mode, $recursive);
+            }
+            if (false === $ret) {
+                throw new \Exception("Could not make dir $pathName");
+            }
+            return true;
+        }
+
+
+        /**
+         *
+         * Creates a file, and the intermediary directories if necessary.
+         *
+         * @return bool,
+         *      true if the file exists when the method has been executed
+         *      false if the file couldn't be created
+         */
+        public static function mkfile($pathName, $data = '', $dirMode = 0777)
+        {
+            if (true === FileSystemTool::mkdir(dirname($pathName), $dirMode, true)) {
+                if (false !== file_put_contents($pathName, $data)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+
+        /**
+         * Removes an entry from the filesystem.
+         * The entry can be:
+         *
+         * - a link, then the link only is removed (not the target)
+         * - a file, then the file is removed
+         * - a directory, the the directory is removed recursively
+         *
+         * It is considered a success when the entry doesn't exist on the filesystem at the end,
+         * and a failure otherwise.
+         *
+         * By default, the method throws an exception in case of failure.
+         *
+         * If you set the throwEx flag to false, then this method will return true in case of success,
+         * and false in case of failure.
+         *
+         */
+        public static function remove($file, $throwEx = true)
+        {
+            if (false === is_link($file)) {
+                if (file_exists($file)) {
+                    return self::_remove($file, $throwEx);
+                } else {
+                    return true;
+                }
+            } else {
+                if (false === unlink($file)) {
+                    return self::_oops("Cannot remove link $file", $throwEx);
                 }
                 return true;
             }
         }
+
+
+        /**
+         * http://stackoverflow.com/questions/1707801/making-a-temporary-dir-for-unpacking-a-zipfile-into
+         */
+        public static function tempDir($dir = null, $prefix = null)
+        {
+            if (null === $dir) {
+                $dir = sys_get_temp_dir();
+            }
+            if (null === $prefix) {
+                $prefix = '';
+            }
+            $tempfile = tempnam($dir, $prefix);
+            if (file_exists($tempfile)) {
+                unlink($tempfile);
+            }
+            mkdir($tempfile);
+            if (is_dir($tempfile)) {
+                return $tempfile;
+            }
+            return false;
+        }
+
+
+        /**
+         *
+         * Works like php's native touch function, except that intermediate dirs are created if necessary,
+         * and that the method throws an Exception if something goes wrong.
+         *
+         * bool touch ( string $filename [, int $time = time() [, int $atime ]] )
+         *
+         */
+        public static function touchDone($fileName)
+        {
+            if (is_string($fileName)) {
+                $dir = dirname($fileName);
+                if (false === FileSystemTool::mkdir($dir, 0777, true)) {
+                    throw new \Exception("Could not create dir: $dir");
+                }
+                $n = func_num_args();
+                if (1 === $n) {
+                    $ret = touch($fileName);
+                } elseif (2 === $n) {
+                    $ret = touch($fileName, func_get_arg(1));
+                } elseif (3 === $n) {
+                    $ret = touch($fileName, func_get_arg(1), func_get_arg(2));
+                }
+                if (false === $ret) {
+                    throw new \Exception("Could not touch the file $fileName");
+                }
+            } else {
+                throw new \InvalidArgumentException(sprintf("fileName argument must be of type string, %s given", gettype($fileName)));
+            }
+        }
+
+
+        //------------------------------------------------------------------------------/
+        //
+        //------------------------------------------------------------------------------/
+        private static function _oops($m, $throwEx = true)
+        {
+            if (true === $throwEx) {
+                throw new \Exception($m);
+            }
+            return false;
+        }
+
+        private static function _remove($file, $throwEx = true)
+        {
+            if (is_dir($file) && !is_link($file)) {
+                if (is_readable($file)) {
+                    $files = new \FilesystemIterator($file,
+                        \FilesystemIterator::KEY_AS_PATHNAME |
+                        \FilesystemIterator::CURRENT_AS_FILEINFO |
+                        \FilesystemIterator::SKIP_DOTS
+                    );
+                    foreach ($files as $f) {
+                        self::_remove($f, $throwEx);
+                    }
+                    if (false === rmdir($file)) {
+                        return self::_oops("Cannot remove dir $file", $throwEx);
+                    }
+                    return true;
+                } else {
+                    return self::_oops("Cannot remove unreadable dir $file", $throwEx);
+                }
+            } else {
+                if (true === is_file($file) || true === is_link($file)) {
+                    if (false === unlink($file)) {
+                        if (true === is_link($file)) {
+                            return self::_oops("Cannot remove link $file", $throwEx);
+                        }
+                        return self::_oops("Cannot remove file $file", $throwEx);
+                    }
+                    return true;
+                }
+            }
+        }
     }
-}
 
 }
 // ------------------------------
@@ -1868,117 +1795,113 @@ class FileSystemTool
 namespace Tools {
 
 
+    use Bat\FileSystemTool;
 
-
-
-
-use Bat\FileSystemTool;
-
-class CleanerTool
-{
-    private $filesToBeCleaned;
-    private $dirsToBeCleaned;
-    private $useSymlinks;
-
-
-    public function __construct()
+    class CleanerTool
     {
-        $this->filesToBeCleaned = [
-            '.gitignore',
-            '.DS_Store',
-        ];
-        $this->dirsToBeCleaned = [
-            '.idea',
-            '.git',
-        ];
-        $this->useSymlinks = false;
-    }
+        private $filesToBeCleaned;
+        private $dirsToBeCleaned;
+        private $useSymlinks;
 
-    public static function create()
-    {
-        return new static();
-    }
 
-    public function setFilesToBeCleaned($filesToBeCleaned)
-    {
-        $this->filesToBeCleaned = $filesToBeCleaned;
-        return $this;
-    }
-
-    public function setDirsToBeCleaned($dirsToBeCleaned)
-    {
-        $this->dirsToBeCleaned = $dirsToBeCleaned;
-        return $this;
-    }
-
-    public function clean($targetDir, $recursive = false)
-    {
-        if (file_exists($targetDir)) {
-
-            $items = $this->getModulesNames($targetDir);
-            foreach ($items as $item) {
-                $d = $targetDir . "/" . $item;
-                $this->cleanDir($d, $recursive);
-            }
-        } else {
-            throw new \RuntimeException("target directory does not exist: $targetDir");
+        public function __construct()
+        {
+            $this->filesToBeCleaned = [
+                '.gitignore',
+                '.DS_Store',
+            ];
+            $this->dirsToBeCleaned = [
+                '.idea',
+                '.git',
+            ];
+            $this->useSymlinks = false;
         }
-    }
 
+        public static function create()
+        {
+            return new static();
+        }
 
-    //--------------------------------------------
-    //
-    //--------------------------------------------
-    private function cleanDir($dir, $recursive = false)
-    {
-        foreach ($this->filesToBeCleaned as $_f) {
-            $f = $dir . "/$_f";
-            if (file_exists($f)) {
-                if (false === $this->useSymlinks && is_link($f)) {
-                    continue;
+        public function setFilesToBeCleaned($filesToBeCleaned)
+        {
+            $this->filesToBeCleaned = $filesToBeCleaned;
+            return $this;
+        }
+
+        public function setDirsToBeCleaned($dirsToBeCleaned)
+        {
+            $this->dirsToBeCleaned = $dirsToBeCleaned;
+            return $this;
+        }
+
+        public function clean($targetDir, $recursive = false)
+        {
+            if (file_exists($targetDir)) {
+
+                $items = $this->getModulesNames($targetDir);
+                foreach ($items as $item) {
+                    $d = $targetDir . "/" . $item;
+                    $this->cleanDir($d, $recursive);
                 }
-                unlink($f);
-            }
-        }
-        foreach ($this->dirsToBeCleaned as $_f) {
-            $f = $dir . "/$_f";
-            if (is_dir($f)) {
-                if (false === $this->useSymlinks && is_link($f)) {
-                    continue;
-                }
-                FileSystemTool::remove($f);
+            } else {
+                throw new \RuntimeException("target directory does not exist: $targetDir");
             }
         }
 
-        if (true === $recursive) {
-            $files = scandir($dir);
-            foreach ($files as $f) {
-                if ('.' !== $f && '..' !== $f) {
-                    $file = $dir . "/" . $f;
-                    if (is_dir($file)) {
-                        if (false === $this->useSymlinks && is_link($file)) {
-                            continue;
+
+        //--------------------------------------------
+        //
+        //--------------------------------------------
+        private function cleanDir($dir, $recursive = false)
+        {
+            foreach ($this->filesToBeCleaned as $_f) {
+                $f = $dir . "/$_f";
+                if (file_exists($f)) {
+                    if (false === $this->useSymlinks && is_link($f)) {
+                        continue;
+                    }
+                    unlink($f);
+                }
+            }
+            foreach ($this->dirsToBeCleaned as $_f) {
+                $f = $dir . "/$_f";
+                if (is_dir($f)) {
+                    if (false === $this->useSymlinks && is_link($f)) {
+                        continue;
+                    }
+                    FileSystemTool::remove($f);
+                }
+            }
+
+            if (true === $recursive) {
+                $files = scandir($dir);
+                foreach ($files as $f) {
+                    if ('.' !== $f && '..' !== $f) {
+                        $file = $dir . "/" . $f;
+                        if (is_dir($file)) {
+                            if (false === $this->useSymlinks && is_link($file)) {
+                                continue;
+                            }
+                            $this->cleanDir($file, $recursive);
                         }
-                        $this->cleanDir($file, $recursive);
                     }
                 }
             }
         }
+
+
+        private function getModulesNames($targetDir)
+        {
+
+            $files = scandir($targetDir);
+            return array_filter($files, function ($v) {
+                if (false !== strpos($v, '.')) {
+                    return false;
+                }
+                return true;
+            });
+        }
     }
-
-
-    private function getModulesNames($targetDir)
-    {
-
-        $files = scandir($targetDir);
-        return array_filter($files, function ($v) {
-            if (false !== strpos($v, '.')) {
-                return false;
-            }
-            return true;
-        });
-    }
-}
 
 }
 // ------------------------------
@@ -1986,14 +1909,10 @@ class CleanerTool
 namespace ConsoleTool\Exception {
 
 
+    class ConsoleToolException extends \Exception
+    {
 
-
-
-
-
-class ConsoleToolException extends \Exception{
-
-}
+    }
 
 }
 // ------------------------------
@@ -2001,88 +1920,84 @@ class ConsoleToolException extends \Exception{
 namespace ConsoleTool {
 
 
+    use ConsoleTool\Exception\ConsoleToolException;
 
-
-
-
-use ConsoleTool\Exception\ConsoleToolException;
-
-class ConsoleTool
-{
-    private static $stty;
-
-
-    public static function eraseLine($n = 1)
+    class ConsoleTool
     {
-        if ($n < 1) {
-            throw new ConsoleToolException("Cannot erase less than one line");
+        private static $stty;
+
+
+        public static function eraseLine($n = 1)
+        {
+            if ($n < 1) {
+                throw new ConsoleToolException("Cannot erase less than one line");
+            }
+            for ($i = 0; $i < $n; $i++) {
+                echo "\x1B[1A\x1B[2K";
+            }
         }
-        for ($i = 0; $i < $n; $i++) {
-            echo "\x1B[1A\x1B[2K";
+
+
+        public static function booleanCapture($default = false, array $bChoices = [])
+        {
+            $booleanChoices = array_merge([
+                'y' => true,
+                'yes' => true,
+                'n' => false,
+                'no' => false,
+            ], $bChoices);
+            $r = self::capture();
+            $r = strtolower(trim($r));
+            if (array_key_exists($r, $booleanChoices)) {
+                return $booleanChoices[$r];
+            }
+            return $default;
         }
-    }
+
+        public static function capture()
+        {
+            if (self::hasSttyAvailable()) {
+
+                $inputStream = STDIN;
+                $sttyMode = shell_exec('stty -g');
+                shell_exec('stty -icanon -echo');
+                $value = "";
+                while (!feof($inputStream)) {
 
 
-    public static function booleanCapture($default = false, array $bChoices = [])
-    {
-        $booleanChoices = array_merge([
-            'y' => true,
-            'yes' => true,
-            'n' => false,
-            'no' => false,
-        ], $bChoices);
-        $r = self::capture();
-        $r = strtolower(trim($r));
-        if (array_key_exists($r, $booleanChoices)) {
-            return $booleanChoices[$r];
-        }
-        return $default;
-    }
+                    $c = fread($inputStream, 1);
+                    if ("\n" === $c) {
+                        break;
+                    }
 
-    public static function capture()
-    {
-        if (self::hasSttyAvailable()) {
+                    $value .= $c;
+                    echo $c;
 
-            $inputStream = STDIN;
-            $sttyMode = shell_exec('stty -g');
-            shell_exec('stty -icanon -echo');
-            $value = "";
-            while (!feof($inputStream)) {
-
-
-                $c = fread($inputStream, 1);
-                if ("\n" === $c) {
-                    break;
                 }
 
-                $value .= $c;
-                echo $c;
+                shell_exec(sprintf('stty %s', $sttyMode));
 
+                if (false === $value) {
+                    throw new ConsoleToolException('Aborted: fgets failed');
+                }
+
+                $value = trim($value);
+                echo "" . PHP_EOL;
+                return $value;
+            } else {
+                throw new ConsoleToolException("stty program is not available on this machine");
             }
+        }
 
-            shell_exec(sprintf('stty %s', $sttyMode));
-
-            if (false === $value) {
-                throw new ConsoleToolException('Aborted: fgets failed');
+        private static function hasSttyAvailable()
+        {
+            if (null !== self::$stty) {
+                return self::$stty;
             }
-
-            $value = trim($value);
-            echo "" . PHP_EOL;
-            return $value;
-        } else {
-            throw new ConsoleToolException("stty program is not available on this machine");
+            exec('stty 2>&1', $output, $exitcode);
+            return self::$stty = $exitcode === 0;
         }
     }
-
-    private static function hasSttyAvailable()
-    {
-        if (null !== self::$stty) {
-            return self::$stty;
-        }
-        exec('stty 2>&1', $output, $exitcode);
-        return self::$stty = $exitcode === 0;
-    }
-}
 
 }
 // ------------------------------
@@ -2090,14 +2005,10 @@ class ConsoleTool
 namespace Kamille\Utils\KamilleNaiveImporter\Exception {
 
 
+    class KamilleNaiveImporterException extends \Exception
+    {
 
-
-
-
-class KamilleNaiveImporterException extends \Exception
-{
-
-}
+    }
 
 }
 // ------------------------------
@@ -2105,107 +2016,102 @@ class KamilleNaiveImporterException extends \Exception
 namespace Kamille\Utils\KamilleNaiveImporter\Log {
 
 
-
-
-
-/**
- * Foreground
- * ----------------
- * black: 0;30
- * blue: 0;34
- * green: 0;32
- * cyan: 0;36    (light blue)
- * red: 0;31
- * purple: 0;35
- * brown: 0;33
- * yellow: 1;33
- * light gray: 0;37
- * white: 1;37
- *
- *
- * dark gray: 1;30
- * light blue: 1;34
- * light green: 1;32
- * light cyan: 1;36
- * light red: 1;31
- * light purple: 1;35
- * light gray: 0;37
- *
- *
- * Background
- * ----------------
- * black: 40
- * red: 41
- * green: 42
- * yellow: 43
- * blue: 44
- * magenta: 45
- * cyan: 46
- * light gray: 47
- *
- */
-class ProgramLog
-{
-
-    private static $dampened = [];
-
-
-    public static function debug($msg, $lbr = true)
-    {
-        self::msg('debug', $msg, "0;34", $lbr);
-    }
-
-    public static function info($msg, $lbr = true)
-    {
-        self::msg('info', $msg, "0;30", $lbr);
-    }
-
-    public static function warn($msg, $lbr = true)
-    {
-        self::msg('warn', $msg, "1;31", $lbr);
-    }
-
-    public static function error($msg, $lbr = true)
-    {
-        self::msg('error', $msg, "0;31", $lbr);
-    }
-
-    public static function success($msg, $lbr = true)
-    {
-        self::msg('success', $msg, "0;32", $lbr);
-    }
-
-    //--------------------------------------------
-    //
-    //--------------------------------------------
-    public static function setDampened(array $dampened)
-    {
-        self::$dampened = $dampened;
-    }
-
-    //--------------------------------------------
-    //
-    //--------------------------------------------
-    private static function msg($type, $msg, $colorCode, $lbr = true)
+    /**
+     * Foreground
+     * ----------------
+     * black: 0;30
+     * blue: 0;34
+     * green: 0;32
+     * cyan: 0;36    (light blue)
+     * red: 0;31
+     * purple: 0;35
+     * brown: 0;33
+     * yellow: 1;33
+     * light gray: 0;37
+     * white: 1;37
+     *
+     *
+     * dark gray: 1;30
+     * light blue: 1;34
+     * light green: 1;32
+     * light cyan: 1;36
+     * light red: 1;31
+     * light purple: 1;35
+     * light gray: 0;37
+     *
+     *
+     * Background
+     * ----------------
+     * black: 40
+     * red: 41
+     * green: 42
+     * yellow: 43
+     * blue: 44
+     * magenta: 45
+     * cyan: 46
+     * light gray: 47
+     *
+     */
+    class ProgramLog
     {
 
-        // is dampened?
-        if (in_array($type, self::$dampened, true)) {
-            return;
+        private static $dampened = [];
+
+
+        public static function debug($msg, $lbr = true)
+        {
+            self::msg('debug', $msg, "0;34", $lbr);
         }
 
+        public static function info($msg, $lbr = true)
+        {
+            self::msg('info', $msg, "0;30", $lbr);
+        }
 
-        echo "\e[" . $colorCode . "m$msg\e[0m";
-        if (true === $lbr) {
-            echo PHP_EOL;
+        public static function warn($msg, $lbr = true)
+        {
+            self::msg('warn', $msg, "1;31", $lbr);
+        }
+
+        public static function error($msg, $lbr = true)
+        {
+            self::msg('error', $msg, "0;31", $lbr);
+        }
+
+        public static function success($msg, $lbr = true)
+        {
+            self::msg('success', $msg, "0;32", $lbr);
+        }
+
+        //--------------------------------------------
+        //
+        //--------------------------------------------
+        public static function setDampened(array $dampened)
+        {
+            self::$dampened = $dampened;
+        }
+
+        //--------------------------------------------
+        //
+        //--------------------------------------------
+        private static function msg($type, $msg, $colorCode, $lbr = true)
+        {
+
+            // is dampened?
+            if (in_array($type, self::$dampened, true)) {
+                return;
+            }
+
+
+            echo "\e[" . $colorCode . "m$msg\e[0m";
+            if (true === $lbr) {
+                echo PHP_EOL;
+            }
         }
     }
-}
 
 }
 // ------------------------------
-
-
 
 
 //--------------------------------------------

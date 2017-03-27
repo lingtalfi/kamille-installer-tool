@@ -10,6 +10,7 @@ use Kamille\Utils\KamilleNaiveImporter\Importer\ImporterInterface;
 use Output\ProgramOutput;
 use Output\ProgramOutputAwareInterface;
 use Output\ProgramOutputInterface;
+use TokenFun\TokenFinder\Tool\TokenFinderTool;
 
 
 /**
@@ -314,13 +315,22 @@ class KamilleNaiveImporter implements KamilleNaiveImporterInterface
         if (is_dir($moduleDir)) {
             $moduleFile = $moduleDir . "/$moduleName" . "Module.php";
             if (file_exists($moduleFile)) {
-                require_once $moduleFile;
-                $className = "Module\\" . $moduleName . '\\' . $moduleName . "Module";
-                $oClass = new $className();
-                if ($oClass instanceof ModuleInterface) {
-                    return $oClass;
+
+                // trying to have a case-sensitive module name
+                $tokens = token_get_all(file_get_contents($moduleFile));
+                $namespace = TokenFinderTool::getNamespace($tokens);
+                $p = explode('\\', $namespace);
+                if (array_key_exists(1, $p) && $p[1] !== $moduleName) {
+                    $output->error("Module name is case-sensistive: please use " . $p[1] . " as the module name");
                 } else {
-                    $output->error(sprintf("$className must be an instance of ModuleInterface, instance of %s given", get_class($oClass)));
+                    require_once $moduleFile;
+                    $className = "Module\\" . $moduleName . '\\' . $moduleName . "Module";
+                    $oClass = new $className();
+                    if ($oClass instanceof ModuleInterface) {
+                        return $oClass;
+                    } else {
+                        $output->error(sprintf("$className must be an instance of ModuleInterface, instance of %s given", get_class($oClass)));
+                    }
                 }
             } else {
                 $output->error("module file not found: $moduleFile");
