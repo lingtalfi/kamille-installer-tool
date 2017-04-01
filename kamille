@@ -65,6 +65,7 @@ $widgetManager = LingApplicationItemManager::create()
 $input = ProgramOutputAwareCommandLineInput::create($argv)
     ->setProgramOutput($output)
     ->addFlag("f")
+    ->addFlag("l")
     ->addFlag("v");
 
 KamilleApplicationItemManagerProgram::create()
