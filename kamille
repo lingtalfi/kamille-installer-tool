@@ -27,6 +27,7 @@ $appDir = getcwd();
  * To install kamille widgets, we need the kaminos environment,
  * which is booted by calling the boot script
  */
+$_SERVER['APPLICATION_ENVIRONMENT'] = 'dev'; // choose between dev or prod
 require_once $appDir . "/boot.php";
 
 
