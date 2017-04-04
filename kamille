@@ -67,6 +67,7 @@ $input = ProgramOutputAwareCommandLineInput::create($argv)
     ->setProgramOutput($output)
     ->addFlag("f")
     ->addFlag("l")
+    ->addFlag("d")
     ->addFlag("v");
 
 KamilleApplicationItemManagerProgram::create()
