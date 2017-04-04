@@ -11,6 +11,7 @@ use Bat\FileSystemTool;
 use CommandLineInput\CommandLineInputInterface;
 use Dir2Symlink\ProgramOutputAwareDir2Symlink;
 use DirectoryCleaner\DirectoryCleaner;
+use Kamille\Architecture\ApplicationParameters\ApplicationParameters;
 use Output\ProgramOutputInterface;
 use Program\ProgramHelper;
 use Program\ProgramInterface;
@@ -183,6 +184,12 @@ class KamilleApplicationItemManagerProgram extends ApplicationItemManagerProgram
         $this->setImportDirectory($modulesImportDirectory);
         return $this;
     }
+
+    protected function handleDebug(CommandLineInputInterface $input)
+    {
+        ApplicationParameters::set("debug", $input->getFlagValue("d"));
+    }
+
 
 
     //--------------------------------------------
