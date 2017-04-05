@@ -26,9 +26,17 @@ class KamilleModulesRepository extends AbstractRepository
                     '+KamilleModules.GentelellaWebDirectory',
                 ],
                 'description' => <<<EEE
-This module allows the user to log into the application, via a login form.
+This module allows the user to log into the kamille application, via a login form.
 It uses the Privilege framework under the hood.
-Tags: kaminos; lingtalfi
+Tags: kamille-app; lingtalfi
+EEE
+                ,
+            ],
+            'Core' => [
+                'deps' => [],
+                'description' => <<<EEE
+This module boots your kamille application. It wraps the dispatching loop and provides code level levers. 
+Tags: kamille-app; lingtalfi
 EEE
                 ,
             ],
