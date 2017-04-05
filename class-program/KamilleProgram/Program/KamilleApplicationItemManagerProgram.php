@@ -5,8 +5,8 @@ namespace KamilleProgram\Program;
 
 
 use ApplicationItemManager\ApplicationItemManager;
-use ApplicationItemManager\ApplicationItemManagerInterface;
 use ApplicationItemManager\Exception\ApplicationItemManagerException;
+use ApplicationItemManager\KamilleApplicationItemManagerInterface;
 use ApplicationItemManager\Program\ApplicationItemManagerProgram;
 use Bat\FileSystemTool;
 use CommandLineInput\CommandLineInputInterface;
@@ -20,10 +20,6 @@ use Program\ProgramInterface;
 class KamilleApplicationItemManagerProgram extends ApplicationItemManagerProgram
 {
 
-    /**
-     * @var ApplicationItemManagerInterface
-     */
-    private $widgetManager;
     private $widgetsImportDirectory;
 
     public function __construct()
@@ -37,13 +33,13 @@ class KamilleApplicationItemManagerProgram extends ApplicationItemManagerProgram
             ->addCommand("wimport", function (CommandLineInputInterface $input, ProgramOutputInterface $output, ProgramInterface $program) use ($itemType) {
                 $force = $input->getFlagValue('f');
                 if (false !== ($itemName = ProgramHelper::getParameter(2, $itemType, $input, $output))) {
-                    $this->widgetManager->import($itemName, $force);
+                    $this->getManager()->wimport($itemName, $force);
                 }
             })
             ->addCommand("wimportall", function (CommandLineInputInterface $input, ProgramOutputInterface $output, ProgramInterface $program) use ($itemType) {
                 $force = $input->getFlagValue('f');
                 $repoId = $input->getParameter(2);
-                if (true === $this->widgetManager->importAll($repoId, $force)) {
+                if (true === $this->getManager()->wimportAll($repoId, $force)) {
                     $output->success("All items were imported");
                 } else {
                     $output->error("Some items couldn't be imported");
@@ -52,13 +48,13 @@ class KamilleApplicationItemManagerProgram extends ApplicationItemManagerProgram
             ->addCommand("winstall", function (CommandLineInputInterface $input, ProgramOutputInterface $output, ProgramInterface $program) use ($itemType) {
                 $force = $input->getFlagValue('f');
                 if (false !== ($itemName = ProgramHelper::getParameter(2, $itemType, $input, $output))) {
-                    $this->widgetManager->install($itemName, $force);
+                    $this->getManager()->winstall($itemName, $force);
                 }
             })
             ->addCommand("winstallall", function (CommandLineInputInterface $input, ProgramOutputInterface $output, ProgramInterface $program) use ($itemType) {
                 $force = $input->getFlagValue('f');
                 $repoId = $input->getParameter(2);
-                if (true === $this->widgetManager->installAll($repoId, $force)) {
+                if (true === $this->getManager()->winstallAll($repoId, $force)) {
                     $output->success("All items were installed");
                 } else {
                     $output->error("Some items couldn't be installed");
@@ -66,13 +62,13 @@ class KamilleApplicationItemManagerProgram extends ApplicationItemManagerProgram
             })
             ->addCommand("wuninstall", function (CommandLineInputInterface $input, ProgramOutputInterface $output, ProgramInterface $program) use ($itemType) {
                 if (false !== ($itemName = ProgramHelper::getParameter(2, $itemType, $input, $output))) {
-                    $this->widgetManager->uninstall($itemName);
+                    $this->getManager()->wuninstall($itemName);
                 }
             })
             ->addCommand("wlist", function (CommandLineInputInterface $input, ProgramOutputInterface $output, ProgramInterface $program) use ($itemType) {
                 $repoId = $input->getParameter(2);
                 $keys = null;
-                $list = $this->widgetManager->listAvailable($repoId, $keys);
+                $list = $this->getManager()->wlistAvailable($repoId, $keys);
                 foreach ($list as $item) {
                     $output->notice("- $item");
                 }
@@ -80,20 +76,20 @@ class KamilleApplicationItemManagerProgram extends ApplicationItemManagerProgram
             ->addCommand("wlistd", function (CommandLineInputInterface $input, ProgramOutputInterface $output, ProgramInterface $program) use ($itemType) {
                 $repoId = $input->getParameter(2);
                 $keys = ['description'];
-                $list = $this->widgetManager->listAvailable($repoId, $keys);
+                $list = $this->getManager()->wlistAvailable($repoId, $keys);
                 foreach ($list as $itemId => $metas) {
                     $output->info("- $itemId:");
                     $output->notice($this->indent($metas['description']));
                 }
             })
             ->addCommand("wlistimported", function (CommandLineInputInterface $input, ProgramOutputInterface $output, ProgramInterface $program) use ($itemType) {
-                $list = $this->widgetManager->listImported();
+                $list = $this->getManager()->wlistImported();
                 foreach ($list as $item) {
                     $output->notice("- $item");
                 }
             })
             ->addCommand("wlistinstalled", function (CommandLineInputInterface $input, ProgramOutputInterface $output, ProgramInterface $program) use ($itemType) {
-                $list = $this->widgetManager->listInstalled();
+                $list = $this->getManager()->wlistInstalled();
                 foreach ($list as $item) {
                     $output->notice("- $item");
                 }
@@ -102,7 +98,7 @@ class KamilleApplicationItemManagerProgram extends ApplicationItemManagerProgram
                 $text = $input->getParameter(2);
                 $repoId = $input->getParameter(3);
                 $keys = null;
-                $list = $this->widgetManager->search($text, $keys, $repoId);
+                $list = $this->getManager()->wsearch($text, $keys, $repoId);
                 foreach ($list as $item) {
 
                     $highlighted = ProgramHelper::highlight($item, $text);
@@ -113,7 +109,7 @@ class KamilleApplicationItemManagerProgram extends ApplicationItemManagerProgram
                 $text = $input->getParameter(2);
                 $repoId = $input->getParameter(3);
                 $keys = ['description'];
-                $list = $this->widgetManager->search($text, $keys, $repoId);
+                $list = $this->getManager()->wsearch($text, $keys, $repoId);
 
                 foreach ($list as $itemId => $metas) {
                     $highlightedItemId = ProgramHelper::highlight($itemId, $text);
@@ -162,18 +158,6 @@ class KamilleApplicationItemManagerProgram extends ApplicationItemManagerProgram
             });
     }
 
-
-    public function setWidgetManager(ApplicationItemManagerInterface $manager)
-    {
-        $this->widgetManager = $manager;
-        return $this;
-    }
-
-    public function setModuleManager(ApplicationItemManagerInterface $manager)
-    {
-        return parent::setManager($manager);
-    }
-
     public function setWidgetsImportDirectory($widgetsImportDirectory)
     {
         $this->widgetsImportDirectory = $widgetsImportDirectory;
@@ -188,12 +172,20 @@ class KamilleApplicationItemManagerProgram extends ApplicationItemManagerProgram
 
     protected function handleDebug(CommandLineInputInterface $input)
     {
+        $manager = $this->getManager();
         ApplicationParameters::set("debug", $input->getFlagValue("d"));
-        if ($this->manager instanceof ApplicationItemManager) {
-            $this->manager->setShowExceptionTrace($input->getFlagValue("t"));
+        if ($manager instanceof ApplicationItemManager) {
+            $manager->setShowExceptionTrace($input->getFlagValue("t"));
         }
     }
 
+    /**
+     * @return KamilleApplicationItemManagerInterface
+     */
+    protected function getManager()
+    {
+        return parent::getManager();
+    }
 
 
     //--------------------------------------------

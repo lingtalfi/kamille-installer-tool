@@ -8,6 +8,7 @@ use ApplicationItemManager\Importer\GithubImporter;
 use ApplicationItemManager\LingApplicationItemManager;
 use BumbleBee\Autoload\ButineurAutoloader;
 use CommandLineInput\ProgramOutputAwareCommandLineInput;
+use KamilleProgram\ApplicationItemManager\KamilleApplicationItemManager;
 use KamilleProgram\Installer\KamilleModuleInstaller;
 use KamilleProgram\Installer\KamilleWidgetInstaller;
 use KamilleProgram\Program\KamilleApplicationItemManagerProgram;
@@ -45,23 +46,7 @@ $modulesImportDir = $appDir . "/class-modules";
 $widgetsImportDir = $appDir . "/class-widgets";
 
 $output = ProgramOutput::create();
-$moduleManager = LingApplicationItemManager::create()
-    ->setOutput($output)
-    ->setInstaller(KamilleModuleInstaller::create()->setOutput($output)->setApplicationDirectory($appDir))
-    ->bindImporter('KamilleModules', GithubImporter::create()->setGithubRepoName("KamilleModules"))
-    ->setFavoriteRepositoryId('KamilleModules')
-    ->setImportDirectory($modulesImportDir)
-    ->addRepository(KamilleModulesRepository::create(), ["km"]);
-
-
-$widgetManager = LingApplicationItemManager::create()
-    ->setOutput($output)
-    ->setInstaller(KamilleWidgetInstaller::create()->setOutput($output)->setApplicationDirectory($appDir))
-    ->bindImporter('KamilleWidgets', GithubImporter::create()->setGithubRepoName("KamilleWidgets"))
-    ->setFavoriteRepositoryId('KamilleWidgets')
-    ->setImportDirectory($widgetsImportDir)
-    ->addRepository(KamilleWidgetsRepository::create(), ["kw"]);
-
+$kamilleManager = KamilleApplicationItemManager::create()->prepare($appDir, $output);
 
 $input = ProgramOutputAwareCommandLineInput::create($argv)
     ->setProgramOutput($output)
@@ -73,8 +58,7 @@ $input = ProgramOutputAwareCommandLineInput::create($argv)
 ;
 
 KamilleApplicationItemManagerProgram::create()
-    ->setModuleManager($moduleManager)
-    ->setWidgetManager($widgetManager)
+    ->setManager($kamilleManager)
     ->setHelpFile($helpFile)
     ->setDefaultCommand("help")
     ->setInput($input)

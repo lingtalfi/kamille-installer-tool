@@ -3,6 +3,8 @@
 namespace KamilleProgram\Installer;
 
 
+use ApplicationItemManager\ApplicationItemManagerInterface;
+use ApplicationItemManager\Aware\ApplicationItemManagerAwareInterface;
 use ApplicationItemManager\Exception\ApplicationItemManagerException;
 use ApplicationItemManager\Installer\LingAbstractItemInstaller;
 
@@ -10,12 +12,19 @@ use ApplicationItemManager\Installer\LingAbstractItemInstaller;
 class KamilleModuleInstaller extends LingAbstractItemInstaller
 {
 
+    private $widgetManager;
+
     public function __construct()
     {
         parent::__construct();
         $this->itemType = "module";
     }
 
+    public function setWidgetManager(ApplicationItemManagerInterface $widgetManager)
+    {
+        $this->widgetManager = $widgetManager;
+        return $this;
+    }
 
     //--------------------------------------------
     //
@@ -32,5 +41,14 @@ class KamilleModuleInstaller extends LingAbstractItemInstaller
         }
         return $this->applicationDirectory . "/modules.txt";
     }
+
+
+    protected function prepareItemInstaller($object)
+    {
+        if ($object instanceof ApplicationItemManagerAwareInterface) {
+            $object->setApplicationItemManager($this->widgetManager);
+        }
+    }
+
 
 }
