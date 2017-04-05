@@ -4,6 +4,7 @@
 namespace KamilleProgram\Program;
 
 
+use ApplicationItemManager\ApplicationItemManager;
 use ApplicationItemManager\ApplicationItemManagerInterface;
 use ApplicationItemManager\Exception\ApplicationItemManagerException;
 use ApplicationItemManager\Program\ApplicationItemManagerProgram;
@@ -188,6 +189,9 @@ class KamilleApplicationItemManagerProgram extends ApplicationItemManagerProgram
     protected function handleDebug(CommandLineInputInterface $input)
     {
         ApplicationParameters::set("debug", $input->getFlagValue("d"));
+        if ($this->manager instanceof ApplicationItemManager) {
+            $this->manager->setShowExceptionTrace($input->getFlagValue("t"));
+        }
     }
 
 

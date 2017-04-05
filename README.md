@@ -152,6 +152,7 @@ kamille tolink                              # converts the top level items of th
 
 # utilities
 kamille clean                               # removes the .git, .gitignore, .idea and .DS_Store files in your items directories, recursively
+kamille flash                               # equalizes the modules from the local repository to the import directory (so that the import directory contains the same modules as the local repository)
 
 
 
@@ -163,6 +164,13 @@ For instead, to list all available widgets, do the following:
 kamille wlist {repoAlias}?
 
 
+FLAGS
+=========
+- f: force
+- l: used by the flash method to create symlinks instead of copying the directories
+- d: debug mode
+- t: trace mode
+- v: verbose mode
 
 
 
@@ -229,7 +237,6 @@ For instance:
     kamille wtolink
     kamille wtodir
     kamille wclean
-
 
 ```
 

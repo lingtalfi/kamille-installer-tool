@@ -65,10 +65,12 @@ $widgetManager = LingApplicationItemManager::create()
 
 $input = ProgramOutputAwareCommandLineInput::create($argv)
     ->setProgramOutput($output)
-    ->addFlag("f")
-    ->addFlag("l")
-    ->addFlag("d")
-    ->addFlag("v");
+    ->addFlag("f") // force
+    ->addFlag("l") // flash to link instead of dirs
+    ->addFlag("d") // debug: todo: what's that for?
+    ->addFlag("t") // trace, complements debug
+    ->addFlag("v") // verbose, todo: do we really need that?
+;
 
 KamilleApplicationItemManagerProgram::create()
     ->setModuleManager($moduleManager)
