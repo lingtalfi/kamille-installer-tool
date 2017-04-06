@@ -24,6 +24,14 @@ class KamilleWidgetsRepository extends AbstractRepository
                 'deps' => [],
                 'description' => "Widget to display the weather conditions for your city",
             ],
+            'Exception' => [
+                'deps' => [],
+                'description' => "Widget for displaying an exception",
+            ],
+            'HttpError' => [
+                'deps' => [],
+                'description' => "Widget to display an http error",
+            ],
         ];
     }
 }
