@@ -21,6 +21,14 @@ class KamilleModulesRepository extends AbstractRepository
     protected function createItemList()
     {
         return [
+            'Application' => [
+                'deps' => [],
+                'description' => <<<EEE
+This module let you make application level decisions.
+Tags: kamille-app; lingtalfi
+EEE
+                ,
+            ],
             'Connexion' => [
                 'deps' => [
                     '+KamilleModules.GentelellaWebDirectory',
