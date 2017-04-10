@@ -4,9 +4,11 @@
 namespace Kamille\Architecture\Controller\Web;
 
 
+use Kamille\Architecture\ApplicationParameters\ApplicationParameters;
 use Kamille\Architecture\Controller\ControllerInterface;
 use Kamille\Architecture\Response\Web\HttpResponse;
 use Kamille\Architecture\Response\Web\HttpResponseInterface;
+use Kamille\Services\XLog;
 use Kamille\Utils\Laws\LawsUtil;
 
 
@@ -26,9 +28,12 @@ class KamilleController implements ControllerInterface
      *
      * @return HttpResponseInterface
      */
-    protected function renderByViewId($viewId, array $config = [])
+    protected function renderByViewId($viewId, $config = null, array $options = [])
     {
-        return HttpResponse::create(LawsUtil::renderLawsViewById($viewId, $config));
+        if (true === ApplicationParameters::get('debug')) {
+            XLog::debug("[Controller " . get_called_class() . "] - renderByViewId with viewId $viewId");
+        }
+        return HttpResponse::create(LawsUtil::renderLawsViewById($viewId, $config, $options));
     }
 
 }

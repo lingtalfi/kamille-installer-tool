@@ -1,7 +1,7 @@
 <?php
 
 
-namespace Kamille\Architecture\ModuleInstaller\Exception;
+namespace Kamille\Module\ModuleInstaller\Exception;
 
 
 class ModuleInstallerException extends \Exception

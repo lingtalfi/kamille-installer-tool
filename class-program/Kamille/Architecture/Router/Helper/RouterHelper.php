@@ -4,7 +4,7 @@
 namespace Kamille\Architecture\Router\Helper;
 
 
-use Router\Exception\RouterException;
+use Kamille\Architecture\Router\Exception\RouterException;
 
 class RouterHelper
 {
@@ -25,7 +25,10 @@ class RouterHelper
         /**
          * As for now, we don't know how to handle a controller in an other format that string
          */
-        throw new RouterException("invalid controller string format: expected format is controllerFullPath:method");
-
+        $msg = "invalid controller string format: expected format is controllerFullPath:method";
+        if (is_string($controller)) {
+            $msg = "invalid controller string format ($controller): expected format is controllerFullPath:method";
+        }
+        throw new RouterException($msg);
     }
 }

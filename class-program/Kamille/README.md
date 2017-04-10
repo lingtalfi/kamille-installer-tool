@@ -161,6 +161,44 @@ echo HtmlLayout::create()
 History Log
 ===============
     
+- 1.33.0 -- 2017-04-10
+
+    - ModuleInstaller moved to Module subdirectory 
+    
+- 1.32.0 -- 2017-04-10
+
+    - add reuse argument to the AbstractX.get method 
+    
+- 1.31.0 -- 2017-04-09
+
+    - WebApplication now has the lang parameter 
+    
+- 1.30.0 -- 2017-04-09
+
+    - XConfig now uses dot notation to access deep array levels 
+    - Z::uri method now works without request 
+    
+- 1.29.0 -- 2017-04-08
+
+    - add Z::uri method 
+    
+- 1.28.0 -- 2017-04-07
+
+    - fix LawsUtil default Widget class 
+    
+- 1.27.0 -- 2017-04-07
+
+    - update LawsUtil arguments 
+    
+- 1.26.0 -- 2017-04-06
+
+    - fix LawsLayoutProxy.includes 
+    - created PublicWidgetInterface 
+    
+- 1.25.0 -- 2017-04-06
+
+    - add LawsLayoutProxy.includes method
+    
 - 1.24.0 -- 2017-04-04
 
     - fix ModuleInstallTool problem with unbind hooks

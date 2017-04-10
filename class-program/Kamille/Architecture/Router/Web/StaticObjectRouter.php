@@ -62,7 +62,6 @@ class StaticObjectRouter implements RouterInterface
         } elseif (null !== $this->defaultController) {
             $controllerString = $this->defaultController;
         }
-
         if (null !== $controllerString) {
             return RouterHelper::routerControllerToCallable($controllerString);
         }

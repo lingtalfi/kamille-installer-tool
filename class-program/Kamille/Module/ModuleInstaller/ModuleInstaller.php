@@ -1,11 +1,11 @@
 <?php
 
 
-namespace Kamille\Architecture\ModuleInstaller;
+namespace Kamille\Module\ModuleInstaller;
 
 
 use Kamille\Architecture\ApplicationParameters\ApplicationParameters;
-use Kamille\Architecture\ModuleInstaller\Exception\ModuleInstallerException;
+use Kamille\Module\ModuleInstaller\Exception\ModuleInstallerException;
 use Kamille\Module\ModuleInterface;
 
 /**

@@ -1,7 +1,9 @@
 dependencies:
     - git::/lingtalfi/Output:1.2.0
-    - git::/lingtalfi/Bat:1.42.0
+    - git::/lingtalfi/Bat:1.46.0
     - git::/lingtalfi/TokenFun:1.1.0
+    - git::/lingtalfi/Logger:1.2.0
+    - git::/lingtalfi/ApplicationItemManager:1.13.0
 
     
     
