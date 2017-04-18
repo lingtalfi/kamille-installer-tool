@@ -40,6 +40,10 @@ class KamilleWidgetsRepository extends AbstractRepository
                 'deps' => [],
                 'description' => "Widget to display a maintenance text, optional title and optional image",
             ],
+            'Notification' => [
+                'deps' => [],
+                'description' => "Widget for displaying a Notification",
+            ],
         ];
     }
 }
