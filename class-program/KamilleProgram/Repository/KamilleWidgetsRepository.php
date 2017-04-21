@@ -36,6 +36,10 @@ class KamilleWidgetsRepository extends AbstractRepository
                 'deps' => [],
                 'description' => "Widget to display an http error",
             ],
+            'LoginForm' => [
+                'deps' => [],
+                'description' => "Widget for displaying a LoginForm",
+            ],
             'Maintenance' => [
                 'deps' => [],
                 'description' => "Widget to display a maintenance text, optional title and optional image",
