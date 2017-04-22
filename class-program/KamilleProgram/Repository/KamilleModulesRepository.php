@@ -56,6 +56,14 @@ Tags: theme; bootstrap
 EEE
                 ,
             ],
+            'NullosAdmin' => [
+                'deps' => [],
+                'description' => <<<EEE
+NullosAdmin is an admin website
+Tags: admin
+EEE
+                ,
+            ],
         ];
     }
 }
