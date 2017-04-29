@@ -57,10 +57,20 @@ EEE
                 ,
             ],
             'NullosAdmin' => [
-                'deps' => [],
+                'deps' => [
+                    "KamilleModules.UploadProfile",
+                ],
                 'description' => <<<EEE
 NullosAdmin is an admin website
 Tags: admin
+EEE
+                ,
+            ],
+            'UploadProfile' => [
+                'deps' => [],
+                'description' => <<<EEE
+This module implements an uploading strategy for your application.
+Tags: upload
 EEE
                 ,
             ],
