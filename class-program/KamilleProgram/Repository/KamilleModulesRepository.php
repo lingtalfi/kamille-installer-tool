@@ -48,6 +48,14 @@ Tags: kamille-app; lingtalfi
 EEE
                 ,
             ],
+            'DataTable' => [
+                'deps' => [],
+                'description' => <<<EEE
+A module to bring datatables to your kamille app 
+Tags: kamille-app; lingtalfi
+EEE
+                ,
+            ],
             'GentelellaWebDirectory' => [
                 'deps' => [],
                 'description' => <<<EEE
