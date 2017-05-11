@@ -64,6 +64,14 @@ Tags: kamille-app; lingtalfi
 EEE
                 ,
             ],
+            'Ekom' => [
+                'deps' => [],
+                'description' => <<<EEE
+An e-commerce module for the kamille framework  
+Tags: kamille-app; lingtalfi; e-commerce
+EEE
+                ,
+            ],
             'GentelellaWebDirectory' => [
                 'deps' => [],
                 'description' => <<<EEE
