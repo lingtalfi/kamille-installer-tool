@@ -72,14 +72,17 @@ Tags: kamille-app; lingtalfi; e-commerce
 EEE
                 ,
             ],
-            'GentelellaWebDirectory' => [
-                'deps' => [],
-                'description' => <<<EEE
-This module imports the gentelella admin theme into the web directory of your application.
-Tags: theme; bootstrap
-EEE
-                ,
-            ],
+            /**
+             * Removed because too heavy (and not used)
+             */
+//            'GentelellaWebDirectory' => [
+//                'deps' => [],
+//                'description' => <<<EEE
+//This module imports the gentelella admin theme into the web directory of your application.
+//Tags: theme; bootstrap
+//EEE
+//                ,
+//            ],
             'NullosAdmin' => [
                 'deps' => [
                     "KamilleModules.UploadProfile",
