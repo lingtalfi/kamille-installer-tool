@@ -29,6 +29,14 @@ Tags: kamille-app; lingtalfi
 EEE
                 ,
             ],
+            'AutoAdmin' => [
+                'deps' => [],
+                'description' => <<<EEE
+A tool to generate a phpMyAdmin like admin.
+Tags: kamille-app; lingtalfi; crud; phpMyAdmin
+EEE
+                ,
+            ],
             'Connexion' => [
                 'deps' => [
                     '+KamilleModules.GentelellaWebDirectory',
