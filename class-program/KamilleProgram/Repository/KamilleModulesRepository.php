@@ -37,6 +37,14 @@ Tags: kamille-app; lingtalfi; crud; phpMyAdmin
 EEE
                 ,
             ],
+            'Authenticate' => [
+                'deps' => [],
+                'description' => <<<EEE
+This module brings the authenticate system to your kamille application.
+Tags: kamille-app; lingtalfi; authenticate
+EEE
+                ,
+            ],
             'Connexion' => [
                 'deps' => [
                     '+KamilleModules.GentelellaWebDirectory',
