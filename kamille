@@ -19,6 +19,15 @@ use Output\ProgramOutput;
 $appDir = getcwd();
 
 
+/**
+ * The -xx special flag allows me to basically
+ * import the modules/widgets directly into the directory I'm in,
+ * rather than prefixing with class-modules/ or class-widgets/.
+ *
+ * To make it work, you need to have the universe installed though.
+ * See bigbang.php installer from the universe installer for more information.
+ *
+ */
 $inPlace = false;
 foreach ($argv as $arg) {
     if ('-xx' === $arg) {
