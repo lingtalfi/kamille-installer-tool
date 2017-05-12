@@ -19,6 +19,13 @@ use Output\ProgramOutput;
 $appDir = getcwd();
 
 
+$inPlace = false;
+foreach ($argv as $arg) {
+    if ('-xx' === $arg) {
+        $inPlace = true;
+    }
+}
+
 
 //--------------------------------------------
 // KAMILLE MODULES AND WIDGETS
@@ -28,7 +35,12 @@ $appDir = getcwd();
  * which is booted by calling the boot script
  */
 $_SERVER['APPLICATION_ENVIRONMENT'] = 'dev'; // choose between dev or prod
-require_once $appDir . "/boot.php";
+
+if (false === $inPlace) {
+    require_once $appDir . "/boot.php";
+} else {
+    require "bigbang.php";
+}
 
 
 /**
@@ -38,11 +50,15 @@ require_once $appDir . "/boot.php";
 ButineurAutoloader::getInst()->addLocation(__DIR__ . "/class-program");
 
 
-
-
 $helpFile = __DIR__ . "/class-program/help.txt";
-$modulesImportDir = $appDir . "/class-modules";
-$widgetsImportDir = $appDir . "/class-widgets";
+if (false === $inPlace) {
+    $modulesImportDir = $appDir . "/class-modules";
+    $widgetsImportDir = $appDir . "/class-widgets";
+} else {
+    $modulesImportDir = $appDir;
+    $widgetsImportDir = $appDir;
+}
+
 
 $output = ProgramOutput::create();
 
@@ -69,10 +85,10 @@ $moduleManager = LingApplicationItemManager::create()
 
 $input = ProgramOutputAwareCommandLineInput::create($argv)
     ->setProgramOutput($output)
-    ->addFlag("f") // force
-    ->addFlag("l") // flash to link instead of dirs
-    ->addFlag("d") // debug: todo: what's that for?
-    ->addFlag("t") // trace, complements debug
+    ->addFlag("f")// force
+    ->addFlag("l")// flash to link instead of dirs
+    ->addFlag("d")// debug: todo: what's that for?
+    ->addFlag("t")// trace, complements debug
     ->addFlag("v") // verbose, todo: do we really need that?
 ;
 
