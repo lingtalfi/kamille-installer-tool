@@ -47,7 +47,7 @@ EEE
             ],
             'Connexion' => [
                 'deps' => [
-                    '+KamilleModules.GentelellaWebDirectory',
+//                    '+KamilleModules.GentelellaWebDirectory',
                 ],
                 'description' => <<<EEE
 This module allows the user to log into the kamille application, via a login form.

@@ -68,6 +68,10 @@ class KamilleApplicationItemManagerProgram extends ApplicationItemManagerProgram
                     $this->widgetManager->uninstall($itemName);
                 }
             })
+            ->addCommand("wupdateall", function (CommandLineInputInterface $input, ProgramOutputInterface $output, ProgramInterface $program) use ($itemType) {
+                $repoId = $input->getParameter(2);
+                $this->widgetManager->updateAll($repoId);
+            })
             ->addCommand("wlist", function (CommandLineInputInterface $input, ProgramOutputInterface $output, ProgramInterface $program) use ($itemType) {
                 $repoId = $input->getParameter(2);
                 $keys = null;

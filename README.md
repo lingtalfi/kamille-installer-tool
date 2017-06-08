@@ -123,7 +123,7 @@ kamille help                                # displays this help
 
 MODULES
 ==============
-# import/install
+# import/install/update
 kamille import {item}                       # import an item and its dependencies, skip already existing item(s)/dependencies
 kamille import -f {item}                    # import an item and its dependencies, replace already existing item(s)/dependencies
 kamille importall {repoId}?                 # import all items at once, skip already existing item(s)/dependencies
@@ -133,6 +133,7 @@ kamille install -f {item}                   # install an item and its dependenci
 kamille installall {repoId}?                # install all items at once, will import them if necessary, skip already existing item(s)/dependencies
 kamille installall {repoId}? -f             # install all items at once, will import them if necessary, replace already existing item(s)/dependencies
 kamille uninstall {item}                    # call the uninstall method on the given item and dependencies
+kamille updateall {repoId}?                 # update all existing item(s) at once, only available for github importer
 
 
 # list/search
@@ -192,6 +193,7 @@ For instance:
     kamille installall -f
     kamille uninstall Connexion
     kamille uninstall km.Connexion
+    kamille updateall
     kamille list
     kamille list km
     kamille listd
@@ -222,6 +224,7 @@ For instance:
     kamille winstallall -f
     kamille wuninstall Connexion
     kamille wuninstall km.Connexion
+    kamille wupdateall
     kamille wlist
     kamille wlist km
     kamille wlistd
