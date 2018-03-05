@@ -119,6 +119,7 @@ The word item is defined like this:
 
 # general
 kamille help                                # displays this help
+kamille newapp {appName}                    # creates an application with the given name in the current directory
 
 
 MODULES
@@ -179,6 +180,8 @@ FLAGS
 
 For instance:
     kamille help
+
+    kamille newapp my-app
 
     kamille import Connexion
     kamille import km.Connexion
@@ -243,7 +246,6 @@ For instance:
     kamille wtolink
     kamille wtodir
     kamille wclean
-
 
 ```
 
