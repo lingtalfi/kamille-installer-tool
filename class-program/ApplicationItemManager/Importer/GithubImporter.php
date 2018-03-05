@@ -55,6 +55,7 @@ class GithubImporter implements ImporterInterface
         }
     }
 
+
     public function update($item, $importDirectory)
     {
         $dir = $importDirectory . "/$item";

@@ -5,10 +5,13 @@ namespace ApplicationItemManager;
 
 
 use ApplicationItemManager\Exception\ApplicationItemManagerException;
+use ApplicationItemManager\Helper\KamilleApplicationItemManagerHelper;
 use ApplicationItemManager\Importer\Exception\ImporterException;
+use ApplicationItemManager\Importer\GithubImporter;
 use ApplicationItemManager\Importer\ImporterInterface;
 use ApplicationItemManager\Installer\InstallerInterface;
 use ApplicationItemManager\Repository\RepositoryInterface;
+use Kamille\Module\DependencyAwareModuleInterface;
 
 
 class ApplicationItemManager implements ApplicationItemManagerInterface
@@ -31,11 +34,10 @@ class ApplicationItemManager implements ApplicationItemManagerInterface
      * @var RepositoryInterface[]
      */
     protected $repositories;
-    private $importDirectory;
+    protected $importDirectory;
 
     private $favoriteRepositoryId;
     private $debugMode;
-    private $showExceptionTrace;
 
     /**
      * @var array repositories, no aliases
@@ -48,7 +50,6 @@ class ApplicationItemManager implements ApplicationItemManagerInterface
         $this->repositories = [];
         $this->importers = [];
         $this->debugMode = false;
-        $this->showExceptionTrace = false;
     }
 
 
@@ -113,14 +114,6 @@ class ApplicationItemManager implements ApplicationItemManagerInterface
         $this->debugMode = $debugMode;
         return $this;
     }
-
-    public function setShowExceptionTrace($showExceptionTrace)
-    {
-        $this->showExceptionTrace = $showExceptionTrace;
-        return $this;
-    }
-
-
 
 
     //--------------------------------------------
@@ -286,6 +279,24 @@ class ApplicationItemManager implements ApplicationItemManagerInterface
         }
     }
 
+    public function updateAll($repoId = null)
+    {
+
+        $all = $this->getAllDeps($repoId);
+        $allOk = true;
+        foreach ($all as $item) {
+            $itemName = $this->getItemNameByItem($item);
+            $repoId = $this->getRepoIdByItemId($item);
+            $importer = $this->findImporter($repoId);
+            if ($importer instanceof GithubImporter) {
+                $importer->update($itemName, $this->importDirectory);
+
+            }
+        }
+        return $allOk;
+    }
+
+
 
     //--------------------------------------------
     //
@@ -307,12 +318,13 @@ class ApplicationItemManager implements ApplicationItemManagerInterface
         }
 
         try {
-            if (true === $force) {
-                $this->installer->uninstall($itemName);
-            }
-
             if (true === $this->installer->install($itemName)) {
                 $this->msg("itemInstalled", $itemName);
+                /**
+                 * We return true as to signal to also process dependencies.
+                 * If false were returned, the handleProcedure would not process the module dependencies.
+                 */
+                return true;
             } else {
                 $this->msg("itemNotInstalled", $itemName);
             }
@@ -350,7 +362,6 @@ class ApplicationItemManager implements ApplicationItemManagerInterface
         }
         return false;
     }
-
 
     /**
      * @return ImporterInterface|false
@@ -470,7 +481,7 @@ class ApplicationItemManager implements ApplicationItemManagerInterface
                 $level = "success";
                 break;
             case 'importerProblem':
-                $msg = "A problem occurred with the import: " . $this->getExceptionAsString($param2);
+                $msg = "A problem occurred with the import: " . $param2->getMessage();
                 $level = "error";
                 break;
             case 'importerNotFound':
@@ -497,7 +508,7 @@ class ApplicationItemManager implements ApplicationItemManagerInterface
                 $level = "success";
                 break;
             case 'installProblem':
-                $msg = "a problem occurred with the install: " . $this->getExceptionAsString($param2);
+                $msg = "a problem occurred with the install: " . $param2->getMessage();
                 $level = "error";
                 break;
             case 'itemNotInstalled':
@@ -516,7 +527,7 @@ class ApplicationItemManager implements ApplicationItemManagerInterface
                 $level = "success";
                 break;
             case 'uninstallProblem':
-                $msg = "a problem occurred with the uninstall: " . $this->getExceptionAsString($param2);
+                $msg = "a problem occurred with the uninstall: " . $param2->getMessage();
                 $level = "error";
                 break;
             case 'itemNotUninstalled':
@@ -581,7 +592,7 @@ class ApplicationItemManager implements ApplicationItemManagerInterface
         throw new ApplicationItemManagerException("Invalid itemId syntax: $itemId. itemId=repoId.itemName");
     }
 
-    private function getRepoId($item)
+    protected function getRepoId($item)
     {
         $this->msg("checkingRepo", $item);
         $repoId = $this->findRepo($item, $this->favoriteRepositoryId);
@@ -630,29 +641,35 @@ class ApplicationItemManager implements ApplicationItemManagerInterface
     }
 
 
-    private function handleProcedure($type, $item, $repoId, $force)
+    protected function handleProcedure($type, $item, $repoId, $force, array $procedure = null)
     {
 
-        if ('install' === $type) {
-            $method = 'doInstall';
-            $msgType = "installingDependencyItem";
-            $depMethod = "getDependencies";
-            $depMsgType = "checkingDependencies";
-        } elseif ('uninstall' === $type) {
-            $method = 'doUninstall';
-            $msgType = "uninstallingDependencyItem";
-            $depMethod = "getHardDependencies";
-            $depMsgType = "checkingHardDependencies";
+        if (null !== $procedure) {
+            list($method, $msgType, $depMethod, $depMsgType) = $procedure;
         } else {
-            $depMethod = "getDependencies";
-            $depMsgType = "checkingDependencies";
-            $method = 'doImport';
-            $msgType = "importingDependencyItem";
+
+
+            if ('install' === $type) {
+                $method = 'doInstall';
+                $msgType = "installingDependencyItem";
+                $depMethod = "getDependencies";
+                $depMsgType = "checkingDependencies";
+            } elseif ('uninstall' === $type) {
+                $method = 'doUninstall';
+                $msgType = "uninstallingDependencyItem";
+                $depMethod = "getHardDependencies";
+                $depMsgType = "checkingHardDependencies";
+            } else {
+                $method = 'doImport';
+                $msgType = "importingDependencyItem";
+                $depMethod = "getDependencies";
+                $depMsgType = "checkingDependencies";
+            }
         }
 
         $itemName = $this->getItemNameByItem($item);
-
         $r = $this->$method($itemName, $repoId, $force);
+        a($itemName, $r, $method, $repoId, $force);
         if (false === $r) {
             return false;
         } else {
@@ -661,8 +678,31 @@ class ApplicationItemManager implements ApplicationItemManagerInterface
             } elseif (array_key_exists($repoId, $this->repositories)) {
                 $itemName = $this->getItemNameByItem($item);
 
-                $repo = $this->repositories[$repoId];
-                $deps = $repo->$depMethod($itemName);
+
+                /**
+                 * Here we first try to ask the module if it knows its own dependencies (which it SHOULD by the way,
+                 * but in the original conception it wasn't...).
+                 * If it doesn't know, then we ask the repository if it knows about the module's dependencies.
+                 *
+                 * NOTE: you should not use the repository for such functional info: the repository can
+                 * be used to search for modules, and can potentially be aware of the modules dependencies,
+                 * however it is first the module's task to be aware of its own dependencies.
+                 *
+                 * (I'm mad that I didn't get that right the first time when ApplicationItemManager was implemented...)
+                 *
+                 */
+                $knowItsDependencies = false;
+                $oInstance = KamilleApplicationItemManagerHelper::getInstallerInstance($itemName, false);
+                if (false !== $oInstance) {
+                    if ($oInstance instanceof DependencyAwareModuleInterface) {
+                        $deps = $oInstance->getDependencies();
+                        $knowItsDependencies = true;
+                    }
+                }
+                if (false === $knowItsDependencies) {
+                    $repo = $this->repositories[$repoId];
+                    $deps = $repo->$depMethod($itemName);
+                }
 
                 $this->msg($depMsgType, $itemName, $deps);
                 $allDepsOk = true;
@@ -711,14 +751,6 @@ class ApplicationItemManager implements ApplicationItemManagerInterface
         $all = array_unique($all);
         sort($all);
         return $all;
-    }
-
-    private function getExceptionAsString(\Exception $e)
-    {
-        if (true === $this->showExceptionTrace) {
-            return PHP_EOL . (string)$e;
-        }
-        return $e->getMessage();
     }
 
 }

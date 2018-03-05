@@ -29,7 +29,6 @@ class KamilleApplicationItemManagerProgram extends ApplicationItemManagerProgram
     {
         parent::__construct();
 
-
         $itemType = $this->getItemType();
 
         $this
