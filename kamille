@@ -46,7 +46,12 @@ foreach ($argv as $arg) {
 $_SERVER['APPLICATION_ENVIRONMENT'] = 'dev'; // choose between dev or prod
 
 if (false === $inPlace) {
-    require_once $appDir . "/boot.php";
+    $inPlaceFile = $appDir . "/boot.php";
+    if (file_exists($inPlaceFile)) {
+        require_once $inPlaceFile;
+    } else {
+        require "bigbang.php";
+    }
 } else {
     require "bigbang.php";
 }
@@ -102,6 +107,7 @@ $input = ProgramOutputAwareCommandLineInput::create($argv)
 ;
 
 KamilleApplicationItemManagerProgram::create()
+    ->setCurrentDir($appDir)
     ->setModuleManager($moduleManager)
     ->setWidgetManager($widgetManager)
     ->setHelpFile($helpFile)

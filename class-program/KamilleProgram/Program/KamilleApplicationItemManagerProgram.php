@@ -24,6 +24,7 @@ class KamilleApplicationItemManagerProgram extends ApplicationItemManagerProgram
      */
     private $widgetManager;
     private $widgetsImportDirectory;
+    private $currentDir;
 
     public function __construct()
     {
@@ -32,6 +33,29 @@ class KamilleApplicationItemManagerProgram extends ApplicationItemManagerProgram
         $itemType = $this->getItemType();
 
         $this
+            //--------------------------------------------
+            // KAMILLE APPS
+            //--------------------------------------------
+            ->addCommand("newapp", function (CommandLineInputInterface $input, ProgramOutputInterface $output, ProgramInterface $program) use ($itemType) {
+
+                $appName = $input->getParameter(2);
+                if (null === $appName) {
+                    $appName = "kamille-app";
+                }
+                $curDir = $this->getCurrentDir();
+
+                $kamilleAppDir = $curDir . "/" . $appName;
+                if (is_dir($kamilleAppDir)) {
+                    $output->warn("The directory already exists, aborting ($kamilleAppDir).");
+                } else {
+                    $cmd = 'git clone https://github.com/lingtalfi/kamille-app.git ' . $appName;
+                    $output->info("Creating kamille app, using command: $cmd");
+                    passthru($cmd);
+                }
+            })
+            //--------------------------------------------
+            //
+            //--------------------------------------------
             ->addCommand("wimport", function (CommandLineInputInterface $input, ProgramOutputInterface $output, ProgramInterface $program) use ($itemType) {
                 $force = $input->getFlagValue('f');
                 if (false !== ($itemName = ProgramHelper::getParameter(2, $itemType, $input, $output))) {
@@ -188,9 +212,27 @@ class KamilleApplicationItemManagerProgram extends ApplicationItemManagerProgram
         return $this;
     }
 
+
+    public function setCurrentDir($dir)
+    {
+        $this->currentDir = $dir;
+        return $this;
+    }
+
+    //--------------------------------------------
+    //
+    //--------------------------------------------
     protected function handleDebug(CommandLineInputInterface $input)
     {
         ApplicationParameters::set("debug", $input->getFlagValue("d"));
+    }
+
+    protected function getCurrentDir()
+    {
+        if (null === $this->currentDir) {
+            $this->currentDir = getcwd();
+        }
+        return $this->currentDir;
     }
 
 
