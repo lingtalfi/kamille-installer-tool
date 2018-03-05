@@ -128,12 +128,13 @@ kamille import {item}                       # import an item and its dependencie
 kamille import -f {item}                    # import an item and its dependencies, replace already existing item(s)/dependencies
 kamille importall {repoId}?                 # import all items at once, skip already existing item(s)/dependencies
 kamille importall {repoId}? -f              # import all items at once, replace already existing item(s)/dependencies
+kamille reimport-existing {repoId}?         # re-import all existing items at once, replace already existing item(s)/dependencies
 kamille install {item}                      # install an item and its dependencies, will import them if necessary, skip already existing item(s)/dependencies
 kamille install -f {item}                   # install an item and its dependencies, will import them if necessary, replace already existing item(s)/dependencies
 kamille installall {repoId}?                # install all items at once, will import them if necessary, skip already existing item(s)/dependencies
 kamille installall {repoId}? -f             # install all items at once, will import them if necessary, replace already existing item(s)/dependencies
 kamille uninstall {item}                    # call the uninstall method on the given item and dependencies
-kamille updateall {repoId}?                 # update all existing item(s) at once, only available for github importer
+kamille updateall {repoId}?                 # update all items at once, only available for github importer
 
 
 # list/search
@@ -185,6 +186,7 @@ For instance:
     kamille import -f km.Connexion
     kamille importall
     kamille importall -f
+    kamille reimport-existing
     kamille install Connexion
     kamille install km.Connexion
     kamille install -f Connexion
@@ -209,6 +211,7 @@ For instance:
     kamille tolink
     kamille todir
     kamille clean
+    kamille flash
 
     kamille wimport Connexion
     kamille wimport km.Connexion
@@ -240,6 +243,7 @@ For instance:
     kamille wtolink
     kamille wtodir
     kamille wclean
+
 
 ```
 
