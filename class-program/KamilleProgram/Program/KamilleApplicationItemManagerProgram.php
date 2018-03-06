@@ -73,6 +73,8 @@ class KamilleApplicationItemManagerProgram extends ApplicationItemManagerProgram
                     $cmd = 'git clone https://github.com/lingtalfi/kamille-app.git ' . $appName;
                     $output->info("Creating kamille app, using command: $cmd");
                     passthru($cmd);
+                    $cmd = "cd $appName && rm .gitignore && rm -rf .git";
+                    passthru($cmd);
                 }
             })
             //--------------------------------------------
