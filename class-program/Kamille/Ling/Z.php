@@ -6,8 +6,10 @@ namespace Kamille\Ling;
 
 use Bat\UriTool;
 use Kamille\Architecture\Application\Web\WebApplication;
+use Kamille\Architecture\ApplicationParameters\ApplicationParameters;
 use Kamille\Architecture\Request\Web\HttpRequestInterface;
 use Kamille\Ling\Exception\LingException;
+use Kamille\Utils\Routsy\LinkGenerator\ApplicationLinkGenerator;
 
 /**
  * Trying to reduce the developer typing.
@@ -24,12 +26,19 @@ class Z
         return WebApplication::inst()->get('app_dir');
     }
 
+
+    public static function themeDir()
+    {
+        return WebApplication::inst()->get('app_dir') . "/theme/" . ApplicationParameters::get('theme');
+    }
+
     public static function getUrlParam($key, $defaultValue = null, $throwEx = false)
     {
         $request = self::request(null, true);
         $u = $request->get('urlParams', []);
         if (array_key_exists($key, $u)) {
-            return $u[$key];
+
+            return urldecode($u[$key]);
         }
         if (true === $throwEx) {
             throw new LingException("urlParam not set: $key");

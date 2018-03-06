@@ -56,7 +56,6 @@ if (false === $inPlace) {
     require "bigbang.php";
 }
 
-
 /**
  *  then we leverage the now existing butineur autoloader to load the classes
  * necessary for THIS script
@@ -103,9 +102,8 @@ $input = ProgramOutputAwareCommandLineInput::create($argv)
     ->addFlag("l")// flash to link instead of dirs
     ->addFlag("d")// debug: todo: what's that for?
     ->addFlag("t")// trace, complements debug
-    ->addFlag("v") // verbose, todo: do we really need that?
-    ->addFlag("in-place")
-;
+    ->addFlag("v")// verbose, todo: do we really need that?
+    ->addFlag("in-place");
 
 KamilleApplicationItemManagerProgram::create()
     ->setCurrentDir($appDir)

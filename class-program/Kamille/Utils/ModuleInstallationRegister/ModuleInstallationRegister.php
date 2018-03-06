@@ -33,5 +33,29 @@ class ModuleInstallationRegister
         return self::$listInstalled;
     }
 
+    public static function getUninstalled()
+    {
+        $installed = self::getInstalled();
+        $all = self::getAllModules();
+        return array_diff($all, $installed);
+    }
+
+
+    //--------------------------------------------
+    //
+    //--------------------------------------------
+    private static function getAllModules()
+    {
+        $ret = [];
+        $appDir = ApplicationParameters::get("app_dir", null, true);
+        $modulesDir = $appDir . "/class-modules";
+        $files = scandir($modulesDir);
+        foreach ($files as $f) {
+            if ('.' !== $f && '..' !== $f && is_dir($modulesDir . "/" . $f)) {
+                $ret[] = $f;
+            }
+        }
+        return $ret;
+    }
 }
 

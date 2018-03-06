@@ -44,18 +44,39 @@ class PhpLayoutRenderer extends LayoutRenderer
     public function render($uninterpretedContent, array $variables)
     {
 
-
         if (false !== ($path = $this->tmpFile($uninterpretedContent))) {
+
 
             /**
              * Prepare vars
              */
+            $v = $variables;
             $__varsKeys = [];
             $__varsValues = [];
-            foreach ($variables as $k => $v) {
-                if (!is_array($v) && !is_object($v)) {
+            foreach ($v as $k => $v1) {
+                if (!is_array($v1) && !is_object($v1)) {
                     $__varsKeys[] = '{' . $k . '}';
-                    $__varsValues[] = $v;
+                    $__varsValues[] = $v1;
+                } else {
+
+                    // use namespaces?
+
+                    $p = explode(':', $k, 2);
+                    if (array_key_exists(1, $p)) {
+
+                        $key = $p[1];
+                        unset($v[$k]);
+                        $v[$key] = $v1;
+
+                        if (is_array($v1)) {
+                            foreach ($v1 as $k2 => $v2) {
+                                if (!is_array($v2) && !is_object($v2)) {
+                                    $__varsKeys[] = '{' . $p[0] . ':' . $k2 . '}';
+                                    $__varsValues[] = $v2;
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
@@ -63,10 +84,9 @@ class PhpLayoutRenderer extends LayoutRenderer
              * Convert all variables accessible as objects.
              * (i.e. $v->my_var withing the template)
              */
-            $v = $variables;
             $l = $this->getLayoutProxy();
             if ($l instanceof VariablesAwareLayoutProxyInterface) {
-                $l->setVariables($variables);
+                $l->setVariables($v);
             }
 
 

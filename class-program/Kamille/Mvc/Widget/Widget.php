@@ -4,7 +4,7 @@
 namespace Kamille\Mvc\Widget;
 
 use Kamille\Architecture\ApplicationParameters\ApplicationParameters;
-use Kamille\Mvc\Loader\LoaderInterface;
+use Loader\LoaderInterface;
 use Kamille\Mvc\Renderer\Exception\RendererException;
 use Kamille\Mvc\Renderer\RendererInterface;
 use Kamille\Mvc\Widget\Exception\WidgetException;
@@ -24,12 +24,14 @@ class Widget implements PublicWidgetInterface
     /**
      * @var LoaderInterface
      */
-    private $loader;
+    protected $loader;
 
     /**
      * @var RendererInterface
      */
     private $renderer;
+
+    private $onPrepareVariablesCallback;
 
     public function __construct()
     {
@@ -118,6 +120,14 @@ class Widget implements PublicWidgetInterface
         $this->renderer = $renderer;
         return $this;
     }
+
+    public function setOnPrepareVariablesCallback(callable $onPrepareVariablesCallback)
+    {
+        $this->onPrepareVariablesCallback = $onPrepareVariablesCallback;
+        return $this;
+    }
+
+
     //--------------------------------------------
     //
     //--------------------------------------------
@@ -145,7 +155,9 @@ class Widget implements PublicWidgetInterface
 
     protected function prepareVariables(array &$variables)
     {
-
+        if (null !== $this->onPrepareVariablesCallback) {
+            call_user_func_array($this->onPrepareVariablesCallback, [&$variables]);
+        }
     }
 
 
@@ -155,7 +167,7 @@ class Widget implements PublicWidgetInterface
     protected function onRenderFailed(\Exception $e, $templateName, WidgetInterface $widget)
     {
         $msg = "Error with rendering of widget " . get_class($widget) . " and template $templateName";
-        XLog::error($msg);
+        XLog::error("$e");
         if (true === ApplicationParameters::get("debug")) {
             return "debug: " . $msg;
         }

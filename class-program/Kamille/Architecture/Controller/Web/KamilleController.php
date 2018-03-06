@@ -19,21 +19,8 @@ class KamilleController implements ControllerInterface
 {
 
 
-    /**
-     * Renders a laws view.
-     * More info on laws here: https://github.com/lingtalfi/laws
-     *
-     *
-     * $config: allows you to override the laws config file on the fly.
-     *
-     * @return HttpResponseInterface
-     */
-    protected function renderByViewId($viewId, $config = null, array $options = [])
+    public function __construct()
     {
-        if (true === ApplicationParameters::get('debug')) {
-            XLog::debug("[Controller " . get_called_class() . "] - renderByViewId with viewId $viewId");
-        }
-        return HttpResponse::create(LawsUtil::renderLawsViewById($viewId, $config, $options));
+        //
     }
-
 }

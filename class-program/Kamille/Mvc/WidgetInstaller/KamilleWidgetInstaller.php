@@ -165,13 +165,26 @@ abstract class KamilleWidgetInstaller implements ProgramOutputAwareInterface, Wi
     //--------------------------------------------
     //
     //--------------------------------------------
+    protected function getPlanets()
+    {
+        /**
+         * Override this if your widget uses planets.
+         * Not implemented yet.
+         */
+        return [];
+    }
+
+
+
+    //--------------------------------------------
+    //
+    //--------------------------------------------
     private function useAutoFiles()
     {
         $d = $this->getWidgetDir();
         $f = $d . "/files/app";
         return (file_exists($f));
     }
-
 
 
     private function getWidgetName()

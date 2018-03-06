@@ -32,6 +32,7 @@ class HttpRequest extends Request implements HttpRequestInterface
         }
     }
 
+
     public function queryString()
     {
         return $this->server['QUERY_STRING'];
@@ -39,7 +40,6 @@ class HttpRequest extends Request implements HttpRequestInterface
 
     public function isHttps()
     {
-
         return array_key_exists("HTTPS", $this->server);
     }
 
@@ -82,4 +82,12 @@ class HttpRequest extends Request implements HttpRequestInterface
     }
 
 
+    //--------------------------------------------
+    //
+    //--------------------------------------------
+    public function hack(array $server)
+    {
+        $this->uriNoQuery = null;
+        $this->server = array_replace($this->server, $server);
+    }
 }

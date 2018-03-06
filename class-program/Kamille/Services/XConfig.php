@@ -30,10 +30,11 @@ class XConfig
      */
     public static function get($key, $default = null, $throwEx = false)
     {
-        $p = explode('.', $key);
+        $p = explode('.', $key, 2);
         $error = null;
         if (count($p) > 1) {
             $module = array_shift($p);
+
 
             if (ModuleInstallationRegister::isInstalled($module)) {
 

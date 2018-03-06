@@ -48,7 +48,8 @@ class AbstractX
                      * the static::class technique does not work in 5.4:  syntax error, unexpected 'class'  (tested in mamp 5.4.45)
                      * It worked on 5.5.38 (mamp).
                      */
-                    $ret = call_user_func([static::class, $method]);
+                    $args = array_slice(func_get_args(),4);
+                    $ret = call_user_func_array([static::class, $method], $args);
                     if (true === $reuse) {
                         self::$cache[$service] = $ret;
                     }

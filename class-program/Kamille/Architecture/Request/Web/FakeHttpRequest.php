@@ -26,4 +26,11 @@ class FakeHttpRequest extends HttpRequest
         ];
         return $o;
     }
+
+
+    public function setHost($host)
+    {
+        $this->server['SERVER_NAME'] = $host;
+        return $this;
+    }
 }
