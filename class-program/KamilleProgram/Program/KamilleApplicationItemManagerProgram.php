@@ -39,15 +39,37 @@ class KamilleApplicationItemManagerProgram extends ApplicationItemManagerProgram
             ->addCommand("newapp", function (CommandLineInputInterface $input, ProgramOutputInterface $output, ProgramInterface $program) use ($itemType) {
 
                 $appName = $input->getParameter(2);
-                if (null === $appName) {
-                    $appName = "kamille-app";
-                }
+                $inPlace = $input->getFlagValue("in-place");
                 $curDir = $this->getCurrentDir();
 
-                $kamilleAppDir = $curDir . "/" . $appName;
-                if (is_dir($kamilleAppDir)) {
-                    $output->warn("The directory already exists, aborting ($kamilleAppDir).");
+                $executeCommand = false;
+                if (true === $inPlace) {
+                    $appName = '.';
+                    /**
+                     * The inplace command option won't work if the directory is not empty,
+                     * and mac likes to create those "useless" .DS_Store a lot, so...
+                     */
+                    if (file_exists($curDir . "/.DS_Store")) {
+                        unlink($curDir . "/.DS_Store");
+                    }
+
+                    $executeCommand = true;
                 } else {
+                    if (null === $appName) {
+                        $appName = "kamille-app";
+                    }
+                    $kamilleAppDir = $curDir . "/" . $appName;
+
+                    if (is_dir($kamilleAppDir)) {
+                        $output->warn("The directory already exists, aborting ($kamilleAppDir).");
+                    } else {
+                        $executeCommand = true;
+                    }
+                }
+
+
+                if (true === $executeCommand) {
+
                     $cmd = 'git clone https://github.com/lingtalfi/kamille-app.git ' . $appName;
                     $output->info("Creating kamille app, using command: $cmd");
                     passthru($cmd);

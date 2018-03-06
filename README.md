@@ -1,6 +1,6 @@
 Kamille installer tool
 =========================
-2017-03-17 --> 2017-03-23
+2017-03-17 --> 2018-03-06
 
 
 
@@ -15,6 +15,9 @@ It imports/installs/uninstalls/... the modules and widgets of kamille in your ap
 
 
 
+Dependency
+===============
+This tool will need git install on your machine.
 
 
 
@@ -119,8 +122,8 @@ The word item is defined like this:
 
 # general
 kamille help                                # displays this help
-kamille newapp {appName}                    # creates an application with the given name in the current directory
-
+kamille newapp {appName}                    # creates a kamille application with the given name in the current directory
+kamille newapp --in-place                   # creates a kamille application inside the current directory (which must be empty)
 
 MODULES
 ==============
@@ -182,6 +185,7 @@ For instance:
     kamille help
 
     kamille newapp my-app
+    kamille newapp --in-place
 
     kamille import Connexion
     kamille import km.Connexion
@@ -246,6 +250,7 @@ For instance:
     kamille wtolink
     kamille wtodir
     kamille wclean
+
 
 ```
 

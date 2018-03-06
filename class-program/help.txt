@@ -14,8 +14,8 @@ The word item is defined like this:
 
 # general
 kamille help                                # displays this help
-kamille newapp {appName}                    # creates an application with the given name in the current directory
-
+kamille newapp {appName}                    # creates a kamille application with the given name in the current directory
+kamille newapp --in-place                   # creates a kamille application inside the current directory (which must be empty)
 
 MODULES
 ==============
@@ -77,6 +77,7 @@ For instance:
     kamille help
 
     kamille newapp my-app
+    kamille newapp --in-place
 
     kamille import Connexion
     kamille import km.Connexion
