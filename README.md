@@ -24,6 +24,7 @@ This tool will need git install on your machine.
 What can it do for you?
 =================
 
+- create an kamille application
 - import a module (and its dependencies)
 - install a module (and its dependencies)
 - uninstall a module  
