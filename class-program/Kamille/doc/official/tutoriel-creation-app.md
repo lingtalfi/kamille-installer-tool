@@ -5,18 +5,50 @@ Tutoriel de création d'une application simple avec kamille
 
 Aujourd'hui nous allons voir comment créer une application de base avec le framework kamille.
 
+
+
+
+Importer l'application basique
+--------------------------------
+
 Pour commencer, on va importer une architecture de base.
 
 
+Il y a 3 méthodes:
 
-Allez sur le [repository kamille-app](https://github.com/lingtalfi/kamille-app) et téléchargez le 
-contenu dans votre application.
+- avec l'outil kit (recommandé)
+- avec git
+- manuellement
 
-Alternativement, vous pouvez utiliser l'outil git:
+
+
+Si vous avez installé l'outil [kit](https://github.com/lingtalfi/kamille-installer-tool):
+
 
 ```bash
-git clone ...
+kamille newapp kamille-app
 ```
+
+Cette méthode a l'avantage de supprimer le dossier .git et le fichier .gitignore pour vous automatiquement.
+ 
+ 
+Avec git:
+```bash
+git clone https://github.com/lingtalfi/kamille-app.git kamille-app
+```
+
+
+Manuellement:
+allez sur le [repository kamille-app](https://github.com/lingtalfi/kamille-app) et téléchargez le 
+contenu dans votre application.
+
+
+
+
+
+Dans tous les cas, vous aurez un dossier contenant une application kamille fonctionnelle de base.
+Dans la suite de ce tutoriel, nous allons expliquer comment cette application fonctionne.
+
 
 
 

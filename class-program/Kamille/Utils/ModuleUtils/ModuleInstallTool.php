@@ -257,25 +257,46 @@ class ModuleInstallTool
 
         $appDir = ApplicationParameters::get('app_dir');
         if (is_dir($appDir)) {
-            $sourceAppDir = $appDir . "/class-modules/$moduleName/files/app";
-            if (file_exists($sourceAppDir)) {
-                DirScanner::create()->scanDir($sourceAppDir, function ($path, $rPath, $level) use ($appDir) {
-                    $targetEntry = $appDir . "/" . $rPath;
-                    /**
-                     * For now we don't follow symlinks.
-                     * We also don't delete directories, because we could potentially
-                     * remove important app directories.
-                     * Maybe this technique will be fine-tuned as time goes by.
-                     *
-                     */
-                    if (
-                        file_exists($targetEntry) &&
-                        !is_link($targetEntry) &&
-                        !is_dir($targetEntry)
-                    ) {
-                        FileSystemTool::remove($targetEntry);
-                    }
-                });
+
+
+            $removeEntriesFile = $appDir . "/class-modules/$moduleName/_remove-entries.txt";
+            if (file_exists($removeEntriesFile)) {
+
+                $lines = file($removeEntriesFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+                foreach ($lines as $entry) {
+                    $entry = str_replace('[app]', $appDir, $entry);
+                    FileSystemTool::remove($entry); // watch out, you have A LOT OF POWER with this...
+                }
+            } else {
+
+                //--------------------------------------------
+                // OLD DEPRECATED TECHNIQUE FOR REMOVING FILES
+                //--------------------------------------------
+                /**
+                 * Note because of the lack of specificity with the comment below
+                 * I'm not sure if we should remove directories,
+                 * and so we don't remove directories, which make the technique itself inefficient (to my opinion)
+                 */
+                $sourceAppDir = $appDir . "/class-modules/$moduleName/files/app";
+                if (file_exists($sourceAppDir)) {
+                    DirScanner::create()->scanDir($sourceAppDir, function ($path, $rPath, $level) use ($appDir) {
+                        $targetEntry = $appDir . "/" . $rPath;
+                        /**
+                         * For now we don't follow symlinks.
+                         * We also don't delete directories, because we could potentially
+                         * remove important app directories.
+                         * Maybe this technique will be fine-tuned as time goes by.
+                         *
+                         */
+                        if (
+                            file_exists($targetEntry) &&
+                            !is_link($targetEntry) &&
+                            !is_dir($targetEntry)
+                        ) {
+                            FileSystemTool::remove($targetEntry);
+                        }
+                    });
+                }
             }
         }
 

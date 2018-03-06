@@ -134,3 +134,10 @@ kamille install NullosAdmin
 ``` 
 
 
+### Désinstallation par ligne de commande
+ 
+```bash
+kamille uninstall NullosAdmin
+``` 
+
+

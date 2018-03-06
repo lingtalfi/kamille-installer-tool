@@ -195,10 +195,6 @@ abstract class KamilleModule implements ProgramOutputAwareInterface, ModuleInter
         if (true === $this->usePlanets()) {
             if ('install' === $type) {
                 $steps['planets'] = "Installing planets dependencies (universe framework)";
-            } else {
-                // note: this won't actually be executed: we don't REMOVE planets installed in the app
-                // because we don't know if they are/aren't used by the app
-                $steps['planets'] = "Remove planets dependencies (universe framework)";
             }
         }
         if (true === $this->useConfig()) {
