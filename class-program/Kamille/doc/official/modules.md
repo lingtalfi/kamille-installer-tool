@@ -69,7 +69,12 @@ chaque module (planets/Kamille/Module/ModuleInterface.php).
 Il y a deux types d'installation:
 
 - installation manuelle 
-- installation par ligne de commande 
+- installation par ligne de commande (recommandée)
+
+
+
+!> Quelque soit le mode d'installation choisi, l'outil [uni](https://github.com/lingtalfi/universe-naive-importer) est requis si votre module a des dépendances avec des planètes
+du [framework universe](https://github.com/karayabin/universe-snapshot).
 
 
 ### Installation manuelle
@@ -122,7 +127,7 @@ Pour gagner un peu de temps, on peut utiliser l'outil en ligne de commande de ka
  commandes que vous souhaitez.
  
  
- Par exemple, pour installer ET importer le module nullos en une ligne, on peut faire ceci:
+ Par exemple, pour installer ET importer le module NullosAdmin en une ligne, on peut faire ceci:
  
 ```bash
 kamille install NullosAdmin

@@ -25,7 +25,7 @@ Principes de base
 ====================
 Kamille utilise les principes de base du framework [kam](https://github.com/lingtalfi/kam).
 
-Pour mieux comprendre, je vous invite à suivre le [tutoriel de création d'une application avec kamille](tutoriel-creation-app.md).
+Pour apprendre à créer une application kamille, je vous invite à construire suivre le [tutoriel de création d'une application avec kamille](tutoriel-creation-app.md).
 
 
 
