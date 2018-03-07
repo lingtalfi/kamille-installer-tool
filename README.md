@@ -140,6 +140,7 @@ kamille installall {repoId}?                # install all items at once, will im
 kamille installall {repoId}? -f             # install all items at once, will import them if necessary, replace already existing item(s)/dependencies
 kamille uninstall {item}                    # call the uninstall method on the given item and dependencies
 kamille updateall {repoId}?                 # update all items at once, only available for github importer
+kamille pack {moduleName}                   # Packs the module {moduleName} from the current application
 
 
 # list/search
@@ -204,6 +205,9 @@ For instance:
     kamille uninstall Connexion
     kamille uninstall km.Connexion
     kamille updateall
+    kamille pack {moduleName}
+
+    
     kamille list
     kamille list km
     kamille listd
@@ -251,7 +255,6 @@ For instance:
     kamille wtolink
     kamille wtodir
     kamille wclean
-
 
 ```
 

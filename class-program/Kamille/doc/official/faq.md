@@ -25,5 +25,13 @@ $routeId = A::route();
 ```
 
 
+Comment récupérer le chemin de l'application?
+------------------------------
+
+```php
+$appDir = A::appDir();
+```
+
+
 
 

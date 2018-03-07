@@ -11,11 +11,13 @@
   
     
 * Outils
-  * [Claws](claws.md)
-    * [Syntaxe des fichiers widget](claws-widget-syntax.md)
+  * [Claws](tools/claws.md)
+    * [Syntaxe des fichiers widget](tools/claws-widget-syntax.md)
+  * [ModulePacker](tools/kamille-module-packer.md)
   
 * Modules
-  * [modules](modules.md)
+  * [Modules](modules.md)
+  * [Le module ThisApp](this-app-module.md)
   
 * FAQ
   * [Les questions les plus fréquentes](faq.md)

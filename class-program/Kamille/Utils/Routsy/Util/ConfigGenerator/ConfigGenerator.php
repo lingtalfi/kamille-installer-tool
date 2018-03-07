@@ -9,8 +9,8 @@ use Bat\FileTool;
 use DirScanner\YorgDirScannerTool;
 use Kamille\Utils\ModuleInstallationRegister\ModuleInstallationRegister;
 use Kamille\Utils\Routsy\Util\ConfigGenerator\Exception\ConfigGeneratorException;
+use Kamille\Utils\Routsy\Util\ConfigGenerator\Helper\RoutsyConfigFileGeneratorHelper;
 use LinearFile\LineSet\LineSetInterface;
-use LinearFile\LineSetFinder\BiggestWrapLineSetFinder;
 
 class ConfigGenerator
 {
@@ -103,7 +103,7 @@ class ConfigGenerator
             include $moduleFile;
 
             $lines = file($moduleFile);
-            $lineSets = $this->getLineSets($lines);
+            $lineSets = RoutsyConfigFileGeneratorHelper::getLineSets($lines);
 
 
 
@@ -118,7 +118,7 @@ class ConfigGenerator
                      */
                     $lineSet = $lineSets[$id];
                     $routeContent = trim($lineSet->toString());
-                    if (true === $this->isDynamic($route[0])) {
+                    if (true === RoutsyConfigFileGeneratorHelper::isDynamic($route[0])) {
                         $newRoutesDynamic[$id] = $routeContent;
                     } else {
                         $newRoutesStatic[$id] = $routeContent;
@@ -156,7 +156,7 @@ class ConfigGenerator
 
         if (file_exists($appRoutsyFile)) {
             $lines = file($appRoutsyFile);
-            $lineSets = $this->getLineSets($lines);
+            $lineSets = RoutsyConfigFileGeneratorHelper::getLineSets($lines);
 
 
             $slices = [];
@@ -190,24 +190,6 @@ class ConfigGenerator
         }
     }
 
-    private function isDynamic($uri)
-    {
-        return (false !== strpos($uri, '{'));
-    }
-
-    private function getLineSets(array $lines)
-    {
-        $pat = '!^\$routes\[([^\]]+)\]\s*=!';
-        $lineSets = BiggestWrapLineSetFinder::create()
-            ->setPrepareNameCallback(function ($v) {
-                return substr($v, 1, -1);
-            })
-            ->setNamePattern($pat)
-            ->setStartPattern($pat)
-            ->setPotentialEndPattern('!\];!')
-            ->find($lines);
-        return $lineSets;
-    }
 
     private function getSectionLineNumber($section, $file)
     {

@@ -12,6 +12,7 @@ use CommandLineInput\CommandLineInputInterface;
 use Dir2Symlink\ProgramOutputAwareDir2Symlink;
 use DirectoryCleaner\DirectoryCleaner;
 use Kamille\Architecture\ApplicationParameters\ApplicationParameters;
+use Kamille\Utils\ModulePacker\KamilleModulePacker;
 use Output\ProgramOutputInterface;
 use Program\ProgramHelper;
 use Program\ProgramInterface;
@@ -75,6 +76,25 @@ class KamilleApplicationItemManagerProgram extends ApplicationItemManagerProgram
                     passthru($cmd);
                     $cmd = "cd $appName && rm .gitignore && rm -rf .git";
                     passthru($cmd);
+                }
+            })
+            //--------------------------------------------
+            // KAMILLE VARIOUS
+            //--------------------------------------------
+            ->addCommand("pack", function (CommandLineInputInterface $input, ProgramOutputInterface $output, ProgramInterface $program) use ($itemType) {
+                $moduleName = $input->getParameter(2);
+                if ($moduleName) {
+
+                    $appDir = $this->getCurrentDir();
+                    $output->info("Packing module $moduleName");
+                    KamilleModulePacker::create()
+                        ->setApplicationDir($appDir)
+                        ->pack($moduleName);
+
+
+
+
+
                 }
             })
             //--------------------------------------------
