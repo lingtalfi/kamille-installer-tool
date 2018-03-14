@@ -12,6 +12,7 @@ use CommandLineInput\CommandLineInputInterface;
 use Dir2Symlink\ProgramOutputAwareDir2Symlink;
 use DirectoryCleaner\DirectoryCleaner;
 use Kamille\Architecture\ApplicationParameters\ApplicationParameters;
+use Kamille\Utils\Console\PageCreatorProgram;
 use Kamille\Utils\ModulePacker\KamilleModulePacker;
 use Output\ProgramOutputInterface;
 use Program\ProgramHelper;
@@ -78,6 +79,65 @@ class KamilleApplicationItemManagerProgram extends ApplicationItemManagerProgram
                     passthru($cmd);
                 }
             })
+            ->addCommand("newpage", function (CommandLineInputInterface $input, ProgramOutputInterface $output, ProgramInterface $program) use ($itemType) {
+
+                $routeId = $input->getParameter(2);
+                $url = $input->getParameter(3);
+                $controllerString = $input->getParameter(4);
+                $module = $input->getParameter(5);
+                $controllerModel = "Dummy";
+                $f = $this->getCurrentDir() . "/kit-newpage.ini";
+                $env = $input->getOptionValue('e');
+
+
+                // developer space
+                //--------------------------------------------
+                $controllerDir = "Pages";
+                $defaultEnv = 'back';
+                $defaultModule = 'ThisApp';
+
+                if (file_exists($f)) {
+                    $conf = parse_ini_file($f);
+                    if (array_key_exists("controllerModel", $conf)) {
+                        $controllerModel = $conf['controllerModel'];
+                    }
+                    if (array_key_exists("controllerDir", $conf)) {
+                        $controllerDir = $conf['controllerDir'];
+                    }
+                    if (array_key_exists("defaultEnv", $conf)) {
+                        $defaultEnv = $conf['defaultEnv'];
+                    }
+                    if (array_key_exists("defaultModule", $conf)) {
+                        $defaultModule = $conf['defaultModule'];
+                    }
+
+                }
+
+                if (null === $env) {
+                    $env = $defaultEnv;
+                }
+                if (null === $module) {
+                    $module = $defaultModule;
+                }
+
+
+                $ret = PageCreatorProgram::create()
+                    ->setControllerModel($controllerModel)
+                    ->setModule($module)
+                    ->setRouteId($routeId)
+                    ->setUrl($url)
+                    ->setControllerString($controllerString)
+                    ->setControllerDir($controllerDir)
+                    ->setEnv($env)
+                    ->execute();
+
+                $output->success("The page has been generated with following info:");
+                foreach ($ret as $k => $v) {
+                    $output->notice("- $k: $v");
+                }
+
+
+            })
             //--------------------------------------------
             // KAMILLE VARIOUS
             //--------------------------------------------
@@ -90,9 +150,6 @@ class KamilleApplicationItemManagerProgram extends ApplicationItemManagerProgram
                     KamilleModulePacker::create()
                         ->setApplicationDir($appDir)
                         ->pack($moduleName);
-
-
-
 
 
                 }

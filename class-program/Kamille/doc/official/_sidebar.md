@@ -12,12 +12,16 @@
     
 * Outils
   * [Claws](tools/claws.md)
-    * [Syntaxe des fichiers widget](tools/claws-widget-syntax.md)
+  * [Syntaxe des fichiers widget](tools/claws-widget-syntax.md)
   * [ModulePacker](tools/kamille-module-packer.md)
+  * [Morphic](tools/morphic.md)
   
 * Modules
   * [Modules](modules.md)
   * [Le module ThisApp](this-app-module.md)
+  
+* Développeur
+  * [Mémo développeur](developer/developer-memo.md)
   
 * FAQ
   * [Les questions les plus fréquentes](faq.md)

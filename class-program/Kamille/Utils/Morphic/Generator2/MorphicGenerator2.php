@@ -76,14 +76,30 @@ class MorphicGenerator2 implements MorphicGenerator2Interface
     {
         if ($this->db2Tables) {
             $tablesBasicInfo = $this->getTablesBasicInfo($this->db2Tables);
-            foreach ($tablesBasicInfo as $table => $tableInfo) {
-                $this->generateByTableInfo($tableInfo);
+            foreach ($tablesBasicInfo as $fullTable => $tableInfo) {
+                $tableAdvancedInfo = $this->getAdvancedInfo($tableInfo);
+                $table2Aliases = $this->_getTable2Aliases($tableInfo);
+                $tableAdvancedInfo['table2Aliases'] = $table2Aliases;
+                $this->registerTableInfo($tableAdvancedInfo); // from now on, $this->db2TableInfo contains all info ($this->db2TableInfo[$db][$table] = $tableInfo;)
+
+            }
+
+
+            foreach ($this->db2Tables as $db => $tables) {
+                foreach ($tables as $table) {
+                    $info = $this->db2TableInfo[$db][$table];
+                    $this->generateByTableInfo($info);
+                }
             }
         } else {
             // don't know this generation technique yet
         }
     }
 
+
+    //--------------------------------------------
+    //
+    //--------------------------------------------
     public function setConfiguration(array $configuration)
     {
         $this->configuration = $configuration;
@@ -117,16 +133,10 @@ class MorphicGenerator2 implements MorphicGenerator2Interface
     //--------------------------------------------
     protected function generateByTableInfo(array $tableInfo)
     {
-        $tableAdvancedInfo = $this->getAdvancedInfo($tableInfo);
-        $table2Aliases = $this->_getTable2Aliases($tableInfo);
-        $tableAdvancedInfo['table2Aliases'] = $table2Aliases;
-
-        $this->registerTableInfo($tableAdvancedInfo);
-
-
-        $this->generateController($tableAdvancedInfo);
-        $this->generateListConfigFile($tableAdvancedInfo, $table2Aliases);
-        $this->generateFormConfigFile($tableAdvancedInfo, $table2Aliases);
+        $table2Aliases = $tableInfo['table2Aliases'];
+        $this->generateController($tableInfo);
+        $this->generateListConfigFile($tableInfo, $table2Aliases);
+        $this->generateFormConfigFile($tableInfo, $table2Aliases);
     }
 
 
@@ -136,7 +146,7 @@ class MorphicGenerator2 implements MorphicGenerator2Interface
         foreach ($db2Tables as $db => $tables) {
             $db2Tables = $this->getAllDbBasicInfo($db);
             foreach ($tables as $table) {
-                $tablesBasicInfo[$table] = $db2Tables[$table];
+                $tablesBasicInfo[$db . "." . $table] = $db2Tables[$table];
             }
         }
         return $tablesBasicInfo;
@@ -383,6 +393,7 @@ EEE;
         $label = $tableInfo['label'];
         $cols = $tableInfo['columns'];
         $hasPrimaryKey = $tableInfo['hasPrimaryKey'];
+        $nullables = $tableInfo['columnNullables'];
         $ai = $tableInfo['ai'];
 
 
@@ -400,17 +411,26 @@ EEE;
         foreach ($cols as $col) {
 
             $thisAi = ($ai === $col) ? $ai : false;
+            $isNullable = (array_key_exists($col, $nullables) && true === $nullables[$col]);
 
 
             if (false === $thisAi) {
-                $insertCols .= $indent . '"' . $col . '" => $fData["' . $col . '"],' . PHP_EOL;
+                if (false === $isNullable) {
+                    $insertCols .= $indent . '"' . $col . '" => $fData["' . $col . '"],' . PHP_EOL;
+                } else {
+                    $insertCols .= $indent . '"' . $col . '" => ($fData["' . $col . '"]) ? $fData["' . $col . '"] : null,' . PHP_EOL;
+                }
             }
 
 
             $inRic = (true === in_array($col, $ric, true));
 
             if (false === $inRic || false === $hasPrimaryKey) {
-                $updateCols .= $indent . '"' . $col . '" => $fData["' . $col . '"],' . PHP_EOL;
+                if (false === $isNullable) {
+                    $updateCols .= $indent . '"' . $col . '" => $fData["' . $col . '"],' . PHP_EOL;
+                } else {
+                    $updateCols .= $indent . '"' . $col . '" => ($fData["' . $col . '"]) ? $fData["' . $col . '"] : null,' . PHP_EOL;
+                }
             }
 
             if (true === $inRic) {
@@ -418,9 +438,14 @@ EEE;
             }
         }
 
+        $sessionFlagName = "form-generated-$table";
 
         $s = <<<EEE
-    'feed' => MorphicHelper::getFeedFunction("$table"),
+    'feed' => MorphicHelper::getFeedFunction("$table", function (SokoFormInterface \$form) {
+        if (SessionTool::pickupFlag("$sessionFlagName")) {
+            \$form->addNotification("$formInsertSuccessMsg", "success");
+        }
+    }),
     'process' => function (\$fData, SokoFormInterface \$form) use (\$isUpdate, \$ric, $commaRics) {
             
         if (false === \$isUpdate) {
@@ -429,7 +454,10 @@ $insertCols
             ], '', \$ric);
             \$form->addNotification("$formInsertSuccessMsg", "success");
             
-            MorphicHelper::redirectToUpdateFormIfNecessary(\$ric);
+            if (array_key_exists("submit-and-update", \$_POST)) {
+                SessionTool::setFlag("$sessionFlagName");
+                MorphicHelper::redirect(\$ric);
+            }
             
         } else {
             QuickPdo::update("$table", [
@@ -469,6 +497,7 @@ EEE;
 
     }
 
+
     protected function _getFormConfigConfControls(array $tableInfo, array $inferred)
     {
         $s = '';
@@ -478,7 +507,6 @@ EEE;
         $columnTypes = $tableInfo["columnTypes"];
         $nullableKeys = $tableInfo['columnNullables'];
         $columnTypesPrecision = $tableInfo['columnTypesPrecision'];
-
 
         $autocompletes = $this->getConfiguration("formControlTypes.autocomplete", []);
 
@@ -502,21 +530,28 @@ EEE;
                     $sExtra = "";
 
 
-
                     if ($ai === $col) {
                         $class = 'SokoInputControl';
                         $readOnly = 'true';
-                    } elseif (true === $this->isAutocompleteControl($col, $autocompletes, $tableInfo)) {
-                        $class = "SokoAutocompleteInputControl";
-                        $sExtra = $this->getAutocompleteControlContent($col);
-                        $readOnly = '(null !== $' . $col . ')';
+                        $sExtraLink = "";
                     } else {
-                        $class = "SokoChoiceControl";
-                        $sExtra = <<<EEE
+                        $fkTableInfo = $this->db2TableInfo[$fks[$col][0]][$fks[$col][1]];
+                        $fkRoute = $fkTableInfo['route'];
+
+                        if (true === $this->isAutocompleteControl($col, $autocompletes, $tableInfo)) {
+                            $class = "SokoAutocompleteInputControl";
+                            $sExtra = $this->getAutocompleteControlContent($col);
+                            $readOnly = '(null !== $' . $col . ')';
+                            $sExtraLink = $this->getForeignKeyExtraLink('autocomplete', $col, $label, $fkRoute);
+                        } else {
+                            $class = "SokoChoiceControl";
+                            $sExtra = <<<EEE
             ->setChoices(\$choice_$col)
 EEE;
-                        $readOnly = '(null !== $' . $col . ')';
+                            $readOnly = '(null !== $' . $col . ')';
+                            $sExtraLink = $this->getForeignKeyExtraLink('fk', $col, $label, $fkRoute);
 
+                        }
                     }
 
 
@@ -525,7 +560,7 @@ $class::create()
             ->setName("$col")
             ->setLabel("$label")
             ->setProperties([
-                'readonly' => $readOnly,
+                'readonly' => $readOnly,$sExtraLink
             ])
             ->setValue(\$$col)
 EEE;
@@ -734,6 +769,7 @@ EEE;
     protected function _getFormConfigFileTop(array $tableInfo, array $inferred)
     {
         return <<<EEE
+use Bat\SessionTool;        
 use QuickPdo\QuickPdo;
 use Kamille\Utils\Morphic\Helper\MorphicHelper;
 use SokoForm\Form\SokoFormInterface;
@@ -759,6 +795,7 @@ EEE;
     {
         // find db prefixes (to find aliases)
         $reversedKeys = $tableInfo['reversedFks'];
+        $nullables = $tableInfo['columnNullables'];
 
         $joins = [];
         foreach ($reversedKeys as $ftable => $colsInfo) {
@@ -767,12 +804,26 @@ EEE;
             $prefix = $table2Aliases[$table];
 
             $onClause = [];
+            $hasNullable = false;
             foreach ($colsInfo as $info) {
-                $onClause[] = "`$prefix`." . $info[3] . "=h." . $info[0];
+
+                $col = $info[0];
+                if (array_key_exists($col, $nullables) && true === $nullables[$col]) {
+                    $hasNullable = true;
+                }
+
+
+                $onClause[] = "`$prefix`." . $info[3] . "=h." . $col;
             }
 
 //            $joins[] = "inner join $ftable $prefix on " . implode(' and ', $onClause);
-            $joins[] = "inner join $table `$prefix` on " . implode(' and ', $onClause);
+
+
+            $joinType = "inner";
+            if ($hasNullable) {
+                $joinType = "left";
+            }
+            $joins[] = "$joinType join $table `$prefix` on " . implode(' and ', $onClause);
         }
 
 
@@ -1239,6 +1290,20 @@ EEE;
     protected function _getControllerRenderWithNoParentMethodExtraVar(array $tableInfo)
     {
         return '';
+    }
+
+    /**
+     * @param $fkType : one of
+     *      - ai
+     *      - autocomplete
+     *      - fk
+     * @param $col
+     * @param $label
+     * @return string
+     */
+    protected function getForeignKeyExtraLink($fkType, $col, $label, $route)
+    {
+        return "";
     }
 
 

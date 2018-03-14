@@ -103,7 +103,9 @@ $input = ProgramOutputAwareCommandLineInput::create($argv)
     ->addFlag("d")// debug: todo: what's that for?
     ->addFlag("t")// trace, complements debug
     ->addFlag("v")// verbose, todo: do we really need that?
-    ->addFlag("in-place");
+    ->addFlag("in-place")
+    ->addOption("e") // environment for newpage command
+;
 
 KamilleApplicationItemManagerProgram::create()
     ->setCurrentDir($appDir)

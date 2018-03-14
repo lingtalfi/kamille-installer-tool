@@ -152,6 +152,10 @@ class KamilleModulePacker implements KamilleModulePackerInterface
          *
          * Note: this will overwrite the <ModuleName>Hooks class entirely (i.e. if you plan to use
          * the packer tool, don't put personal code into this <ModuleName>Hooks class.
+         *
+         * Note: this hooks parsing technique will only work if the signature of the method
+         * lies on ONE line only (i.e. not multiple lines).
+         *
          */
 
 
@@ -184,8 +188,8 @@ class KamilleModulePacker implements KamilleModulePackerInterface
 
                 // get the content of the method
                 $content = trim($cooker->getMethodContent($method, false));
-                $startComment = '// mit-start' . ':' . $moduleName . '\s*';
-                $endComment = '// mit-end' . ':' . $moduleName;
+                $startComment = '// mit-start' . ':' . $moduleName . '\b';
+                $endComment = '// mit-end' . ':' . $moduleName . '\b';
                 $pattern = '!' . $startComment . '.*' . $endComment . '!Ums';
                 $match = [];
                 $moduleRelatedContent = '';

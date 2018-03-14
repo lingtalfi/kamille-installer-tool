@@ -122,14 +122,14 @@ class MorphicHelper
     }
 
 
-    public static function getFeedFunction($table)
+    public static function getFeedFunction($table, callable $onFeedAfter = null)
     {
-        return self::getFeedFunctionByQuery("select * from `$table`");
+        return self::getFeedFunctionByQuery("select * from `$table`", $onFeedAfter);
     }
 
-    public static function getFeedFunctionByQuery($query)
+    public static function getFeedFunctionByQuery($query, callable $onFeedAfter = null)
     {
-        return function (SokoFormInterface $form, array $ric) use ($query) {
+        return function (SokoFormInterface $form, array $ric) use ($query, $onFeedAfter) {
             $markers = [];
             $values = array_intersect_key($_GET, array_flip($ric));
             $q = $query;
@@ -137,6 +137,10 @@ class MorphicHelper
             $row = QuickPdo::fetch("$q", $markers);
             if ($row) {
                 $form->inject($row);
+            }
+
+            if ($onFeedAfter) {
+                $onFeedAfter($form);
             }
         };
     }
@@ -157,4 +161,13 @@ class MorphicHelper
             throw $e;
         }
     }
+
+    public static function redirect(array $params = [])
+    {
+        $response = RedirectResponse::create(UriTool::uri(null, $params, false, true));
+        $e = ClawsHttpResponseException::create()->setHttpResponse($response);
+        throw $e;
+    }
+
+
 }

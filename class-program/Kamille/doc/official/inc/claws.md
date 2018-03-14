@@ -57,6 +57,35 @@ Dans Claws, le contrôleur:
 
 C'est à dire que le contrôleur est un entre-metteur entre le modèle (M de MVC) et la vue (V de MVC).
 
+
+###### Un contrôleur claws
+
+```php
+<?php
+
+
+namespace Controller\YourModule\Miscellaneous;
+
+
+use Kamille\Architecture\Controller\Web\KamilleClawsController;
+use Kamille\Utils\Claws\ClawsWidget;
+
+class MyTestController extends KamilleClawsController
+{
+    public function render(){
+        $this->prepareClaws();
+        $this->getClaws()->setWidget("maincontent.mywidget", ClawsWidget::create()
+            ->setTemplate("Test/mytemplate") // theme/your_theme/widgets/Test/mytemplate.tpl.php
+            ->setConf([])
+        );
+
+        return parent::doRenderClaws();
+    }
+}
+
+```
+
+
 #### Layout
 
 Le layout (ou modèle en français) est le squelette d'une page web.

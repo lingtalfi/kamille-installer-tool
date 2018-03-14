@@ -48,6 +48,9 @@ class ShortcutListConfigurationProvider extends ListConfigurationProvider
                 }
             }
 
+
+            $conf['module'] = $module;
+
         } else {
             throw new MorphicException("File not found: $file");
         }

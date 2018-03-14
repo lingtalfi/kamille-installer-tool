@@ -17,6 +17,12 @@ kamille help                                # displays this help
 kamille newapp {appName}                    # creates a kamille application with the given name in the current directory
 kamille newapp --in-place                   # creates a kamille application inside the current directory (which must be empty)
 
+kamille newpage {routeId}                   # creates a kamille page in the current application
+kamille newpage {routeId} {url}? {controllerString}? {module}?
+
+
+
+
 MODULES
 ==============
 # import/install/update
@@ -79,6 +85,7 @@ For instance:
 
     kamille newapp my-app
     kamille newapp --in-place
+    kamille newpage my_page
 
     kamille import Connexion
     kamille import km.Connexion

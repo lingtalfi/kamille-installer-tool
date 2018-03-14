@@ -83,7 +83,7 @@ abstract class KamilleModule implements ProgramOutputAwareInterface, ModuleInter
     public function getDependencies()
     {
         /**
-         * Override this if your module uses widgets
+         * Override this if your module uses other modules
          */
         return [];
     }

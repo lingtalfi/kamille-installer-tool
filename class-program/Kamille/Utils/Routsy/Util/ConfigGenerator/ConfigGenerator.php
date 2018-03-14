@@ -24,6 +24,37 @@ class ConfigGenerator
         return new static();
     }
 
+
+    /**
+     * This will insert the routeContent into the routsyFile if the routeId
+     *
+     * does not already exist in the given routsyFile..
+     * It will trigger an error if the routeId already exists in the routsyFile.
+     *
+     * Note: this is unintuitive, but the route is actually inserted ABOVE the section which name is given (not BELOW).
+     *
+     */
+    public static function addRouteToRoutsyFile($routeId, $routeContent, $routsyFile, $section = null)
+    {
+        if (null === $section) {
+            $section = "user - before";
+        }
+
+        // check that the routeId doesn't exist, if it does, we trigger an error.
+        $routes = [];
+        if (file_exists($routsyFile)) {
+            include $routsyFile;
+            if (false === array_key_exists($routeId, $routes)) {
+                $lineNumber = self::getSectionLineNumber($section, $routsyFile);
+                FileTool::insert($lineNumber, $routeContent . PHP_EOL, $routsyFile);
+            } else {
+                throw new \Exception("route already exists with id $routeId");
+            }
+        } else {
+            throw new \Exception("routsy file not found: $routsyFile");
+        }
+    }
+
     public function refresh()
     {
         $installedModules = ModuleInstallationRegister::getInstalled();
@@ -83,6 +114,30 @@ class ConfigGenerator
     //--------------------------------------------
     //
     //--------------------------------------------
+    private static function getSectionLineNumber($section, $file)
+    {
+        $lines = file($file);
+
+
+        $patternLine = '!//--------------------------------------------!';
+        $pattern2 = '!//\s*' . strtoupper($section) . '!';
+        $n = 1;
+        $match1 = false;
+        $match2 = false;
+        foreach ($lines as $line) {
+            if (false === $match1 && preg_match($patternLine, $line)) {
+                $match1 = true;
+            } elseif (true === $match1 && false === $match2 && preg_match($pattern2, $line)) {
+                $match2 = true;
+            } elseif (true === $match1 && true === $match2 && preg_match($patternLine, $line)) {
+                return $n - 2;
+            }
+            $n++;
+        }
+        throw new ConfigGeneratorException("section not found $section");
+    }
+
+
     private function processModule($moduleFile, $appFile)
     {
 
@@ -98,17 +153,18 @@ class ConfigGenerator
         $newRoutesDynamic = [];
         $newRoutesStatic = [];
 
+        $routes = [];
         if (file_exists($moduleFile)) {
-            $routes = [];
             include $moduleFile;
+        }
 
+
+        // we only do something if the module contains at least one route
+        if ($routes) {
             $lines = file($moduleFile);
             $lineSets = RoutsyConfigFileGeneratorHelper::getLineSets($lines);
-
-
-
             foreach ($routes as $id => $route) {
-                // we only override routes that don't exist (don't want to accidentally override the user's work)
+                // we only create routes that don't exist (don't want to accidentally override the user's work)
                 if (!array_key_exists($id, $_routes)) {
                     // doesn't exist?
                     // ok, is it dynamic or static (make two groups)?
@@ -125,29 +181,27 @@ class ConfigGenerator
                     }
                 }
             }
-        }
 
 
-
-        // append in static Section
-        if (count($newRoutesStatic) > 0) {
-            foreach ($newRoutesStatic as $id => $routeContent) {
-                $dynamicSectionLineNumber = $this->getSectionLineNumber("dynamic", $appFile);
-                FileTool::insert($dynamicSectionLineNumber, $routeContent . PHP_EOL, $appFile);
+            // append in static Section
+            if (count($newRoutesStatic) > 0) {
+                foreach ($newRoutesStatic as $id => $routeContent) {
+                    $dynamicSectionLineNumber = self::getSectionLineNumber("dynamic", $appFile);
+                    FileTool::insert($dynamicSectionLineNumber, $routeContent . PHP_EOL, $appFile);
+                }
             }
-        }
 
 
-
-        // append in dynamic Section
-        if (count($newRoutesDynamic) > 0) {
-            foreach ($newRoutesDynamic as $id => $routeContent) {
-                $userAfterSectionLineNumber = $this->getSectionLineNumber("user - after", $appFile);
-                FileTool::insert($userAfterSectionLineNumber, PHP_EOL . $routeContent . PHP_EOL, $appFile);
+            // append in dynamic Section
+            if (count($newRoutesDynamic) > 0) {
+                foreach ($newRoutesDynamic as $id => $routeContent) {
+                    $userAfterSectionLineNumber = self::getSectionLineNumber("user - after", $appFile);
+                    FileTool::insert($userAfterSectionLineNumber, PHP_EOL . $routeContent . PHP_EOL, $appFile);
+                }
             }
-        }
 
-        FileTool::cleanVerticalSpaces($appFile, 2);
+            FileTool::cleanVerticalSpaces($appFile, 2);
+        }
     }
 
 
@@ -190,29 +244,6 @@ class ConfigGenerator
         }
     }
 
-
-    private function getSectionLineNumber($section, $file)
-    {
-        $lines = file($file);
-
-
-        $patternLine = '!//--------------------------------------------!';
-        $pattern2 = '!//\s*' . strtoupper($section) . '!';
-        $n = 1;
-        $match1 = false;
-        $match2 = false;
-        foreach ($lines as $line) {
-            if (false === $match1 && preg_match($patternLine, $line)) {
-                $match1 = true;
-            } elseif (true === $match1 && false === $match2 && preg_match($pattern2, $line)) {
-                $match2 = true;
-            } elseif (true === $match1 && true === $match2 && preg_match($patternLine, $line)) {
-                return $n - 2;
-            }
-            $n++;
-        }
-        throw new ConfigGeneratorException("section not found $section");
-    }
 
     private function createEmptyConfFile($appFile)
     {

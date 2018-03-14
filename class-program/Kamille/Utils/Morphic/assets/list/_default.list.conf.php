@@ -70,7 +70,7 @@ if (null !== $ric) {
     if (array_key_exists("defaultFormLinkPrefix", $conf)) {
         $defaultFormLinkPrefix = $conf['defaultFormLinkPrefix'];
         $hasQuestionMark = (false !== strpos($defaultFormLinkPrefix, "?"));
-    } elseif (null !== $formRoute) {
+    } elseif ($formRoute) {
         $defaultFormLinkPrefix = N::link($formRoute);
     }
     $extraVars = (array_key_exists("formRouteExtraVars", $conf)) ? $conf['formRouteExtraVars'] : [];
