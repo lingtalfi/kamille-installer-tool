@@ -15,6 +15,7 @@
   * [Syntaxe des fichiers widget](tools/claws-widget-syntax.md)
   * [ModulePacker](tools/kamille-module-packer.md)
   * [Morphic](tools/morphic.md)
+  * [Kit](tools/kit.md)
   
 * Modules
   * [Modules](modules.md)

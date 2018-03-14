@@ -20,6 +20,7 @@ class PageCreatorProgram
     protected $controllerModel;
     //
     protected $controllerDir;
+    protected $controllerModelDir;
     protected $env;
 
 
@@ -31,6 +32,7 @@ class PageCreatorProgram
         $this->controllerString = null;
         $this->controllerModel = "Dummy"; // look in assets directory
         $this->controllerDir = "Pages";
+        $this->controllerModelDir = null;
         $this->env = "back";
     }
 
@@ -49,6 +51,7 @@ class PageCreatorProgram
         $controllerString = $this->controllerString;
         $controllerDir = $this->controllerDir;
         $controllerModel = $this->controllerModel;
+        $controllerModelDir = $this->controllerModelDir;
         $appDir = A::appDir();
 
 
@@ -62,6 +65,10 @@ class PageCreatorProgram
         if (null === $module) {
             $module = "ThisApp";
         }
+        if (null === $controllerModelDir) {
+            $controllerModelDir = __DIR__ . '/assets';
+        }
+        $controllerModelDir = str_replace('[app]', $appDir, $controllerModelDir);
 
         $controllerPath = "\Controller\\$module";
 
@@ -78,6 +85,8 @@ class PageCreatorProgram
         }
         $controllerPath .= "\\$controllerString";
 
+
+        $routeId = $module . "_" . $routeId;
 
         // first, insert a route
         $routeContent = '$routes["' . $routeId . '"] = ["' . $url . '", null, null, \'' . $controllerPath . '\'];';
@@ -100,7 +109,7 @@ class PageCreatorProgram
         $controllerNamespaceParent = implode('\\', $p);
 
         $controllerFile = $appDir . "/class-controllers/" . str_replace('\\', '/', $path) . '.php';
-        $controllerModelFile = __DIR__ . "/assets/$controllerModel" . "ControllerModel.tpl.php";
+        $controllerModelFile = $controllerModelDir . "/$controllerModel" . "ControllerModel.tpl.php";
         if (file_exists($controllerModelFile)) {
             $content = file_get_contents($controllerModelFile);
             $content = str_replace([
@@ -128,6 +137,12 @@ class PageCreatorProgram
     //--------------------------------------------
     //
     //--------------------------------------------
+    public function setControllerModelDir($controllerModelDir)
+    {
+        $this->controllerModelDir = $controllerModelDir;
+        return $this;
+    }
+
     public function setControllerModel($controllerModel)
     {
         $this->controllerModel = $controllerModel;

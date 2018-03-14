@@ -95,6 +95,7 @@ class KamilleApplicationItemManagerProgram extends ApplicationItemManagerProgram
                 $controllerDir = "Pages";
                 $defaultEnv = 'back';
                 $defaultModule = 'ThisApp';
+                $controllerModelDir = null;
 
                 if (file_exists($f)) {
                     $conf = parse_ini_file($f);
@@ -110,6 +111,9 @@ class KamilleApplicationItemManagerProgram extends ApplicationItemManagerProgram
                     if (array_key_exists("defaultModule", $conf)) {
                         $defaultModule = $conf['defaultModule'];
                     }
+                    if (array_key_exists("controllerModelDir", $conf)) {
+                        $controllerModelDir = $conf['controllerModelDir'];
+                    }
 
                 }
 
@@ -122,6 +126,7 @@ class KamilleApplicationItemManagerProgram extends ApplicationItemManagerProgram
 
 
                 $ret = PageCreatorProgram::create()
+                    ->setControllerModelDir($controllerModelDir)
                     ->setControllerModel($controllerModel)
                     ->setModule($module)
                     ->setRouteId($routeId)
