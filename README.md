@@ -278,6 +278,10 @@ There is currently one widget repository:
 
 
 
+More doc:
+==============
+- [newpage](http://www.ling-docs.ovh/kamille/#/tools/morphic) 
+
 
 
 
