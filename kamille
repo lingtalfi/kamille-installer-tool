@@ -50,10 +50,10 @@ if (false === $inPlace) {
     if (file_exists($inPlaceFile)) {
         require_once $inPlaceFile;
     } else {
-        require "bigbang.php";
+        require __DIR__ . "/class-program/bigbang.php";
     }
 } else {
-    require "bigbang.php";
+    require __DIR__ . "/class-program/bigbang.php";
 }
 
 /**
