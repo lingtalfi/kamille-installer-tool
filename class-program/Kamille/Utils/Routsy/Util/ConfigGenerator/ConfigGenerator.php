@@ -24,6 +24,48 @@ class ConfigGenerator
         return new static();
     }
 
+    public static function addSectionIfNotExist($routsyFile, $sectionLabel, $parentSectionLabel)
+    {
+        if (file_exists($routsyFile)) {
+            // does the section already exist?
+            $found = false;
+            try {
+                $lineNumber = self::getSectionLineNumber($sectionLabel, $routsyFile);
+                $found = true;
+            } catch (ConfigGeneratorException $e) {
+
+            }
+
+
+            if (false === $found) {
+
+
+                $lineNumber = self::getSectionLineNumber($parentSectionLabel, $routsyFile);
+                $lineNumber += 3; // sections are comments on 3 lines...
+
+
+                /**
+                 * Note that we always add one line above and below for security
+                 */
+                $sectionContent = <<<EEE
+                
+//--------------------------------------------
+// $sectionLabel
+//--------------------------------------------
+
+EEE;
+
+
+                FileTool::insert($lineNumber, $sectionContent . PHP_EOL, $routsyFile);
+
+
+                // check that the routeId doesn't exist, if it does, we trigger an error.
+                $routes = [];
+            }
+        } else {
+            throw new \Exception("routsy file not found: $routsyFile");
+        }
+    }
 
     /**
      * This will insert the routeContent into the routsyFile if the routeId
@@ -31,13 +73,12 @@ class ConfigGenerator
      * does not already exist in the given routsyFile..
      * It will trigger an error if the routeId already exists in the routsyFile.
      *
-     * Note: this is unintuitive, but the route is actually inserted ABOVE the section which name is given (not BELOW).
      *
      */
     public static function addRouteToRoutsyFile($routeId, $routeContent, $routsyFile, $section = null)
     {
         if (null === $section) {
-            $section = "user - before";
+            $section = "USER - BEFORE";
         }
 
         // check that the routeId doesn't exist, if it does, we trigger an error.
@@ -45,7 +86,18 @@ class ConfigGenerator
         if (file_exists($routsyFile)) {
             include $routsyFile;
             if (false === array_key_exists($routeId, $routes)) {
-                $lineNumber = self::getSectionLineNumber($section, $routsyFile);
+
+                try {
+                    $lineNumber = self::getSectionLineNumber($section, $routsyFile);
+                } catch (ConfigGeneratorException $e) {
+                    // section not found? let's try another one
+                    $section = "STATIC";
+                    $lineNumber = self::getSectionLineNumber($section, $routsyFile);
+
+                }
+
+                $lineNumber += 3; // sections are comments on 3 lines...
+
                 FileTool::insert($lineNumber, $routeContent . PHP_EOL, $routsyFile);
             } else {
                 throw new \Exception("route already exists with id $routeId");
@@ -120,7 +172,7 @@ class ConfigGenerator
 
 
         $patternLine = '!//--------------------------------------------!';
-        $pattern2 = '!//\s*' . strtoupper($section) . '!';
+        $pattern2 = '!//\s*' . $section . '!';
         $n = 1;
         $match1 = false;
         $match2 = false;

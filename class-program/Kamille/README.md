@@ -167,6 +167,10 @@ History Log
 ===============
     
     
+- 1.123.0 -- 2018-03-24
+
+    - enhance PageCreatorProgram class, now create an appropriate module section in routsy file and put all routes there
+    
 - 1.122.0 -- 2018-03-24
 
     - enhance NewModuleProgram class, now also generate default HooksHelper

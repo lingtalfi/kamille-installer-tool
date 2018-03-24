@@ -95,7 +95,8 @@ class PageCreatorProgram
         // first, insert a route
         $routeContent = '$routes["' . $routeId . '"] = ["' . $url . '", null, null, \'' . $controllerPath . '\'];';
         $routsyFile = $appDir . "/config/routsy/$env.php";
-        $section = "static"; // default="user - before"
+        $section = "Module $module"; //
+        ConfigGenerator::addSectionIfNotExist($routsyFile, $section, "MODULES");
         ConfigGenerator::addRouteToRoutsyFile($routeId, $routeContent, $routsyFile, $section);
 
 
