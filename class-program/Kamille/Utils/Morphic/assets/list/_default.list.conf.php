@@ -79,26 +79,42 @@ if (null !== $ric) {
 
 
         $adaptor = (array_key_exists("rowActionUpdateRicAdaptor", $conf)) ? $conf['rowActionUpdateRicAdaptor'] : [];
+        $useRic = true;
+        if (array_key_exists("formRouteUseRic", $conf) && false === $conf['formRouteUseRic']) {
+            $useRic = false;
+        }
         $defaultConf['rowActions'] = [
             // same as listActions,
             [
                 "name" => "update",
                 "label" => "Modifier",
                 "icon" => "fa fa-pencil",
-                "link" => function (array $row) use ($ric, $defaultFormLinkPrefix, $adaptor, $hasQuestionMark, $extraVars) {
+                "link" => function (array $row) use ($ric, $defaultFormLinkPrefix, $adaptor, $hasQuestionMark, $extraVars, $useRic) {
                     $s = $defaultFormLinkPrefix;
                     if (false === $hasQuestionMark) {
                         $s .= '?form';
                     }
-                    foreach ($ric as $col) {
-                        $keyCol = (array_key_exists($col, $adaptor)) ? $adaptor[$col] : $col;
-                        $s .= "&";
-                        $s .= $keyCol . "=" . $row[$col]; // escape?
-                    }
-                    foreach ($extraVars as $k => $v) {
-                        if (in_array($k, $ric , true)) {
-                            continue;
+
+
+                    if (true === $useRic) {
+                        foreach ($ric as $col) {
+                            $keyCol = (array_key_exists($col, $adaptor)) ? $adaptor[$col] : $col;
+                            $s .= "&";
+                            $s .= $keyCol . "=" . $row[$col]; // escape?
                         }
+                    }
+
+
+                    foreach ($extraVars as $k => $v) {
+                        if (true === $useRic && in_array($k, $ric, true)) {
+                            continue;
+                        } elseif (0 === strpos($v, '$')) {
+                            $tag = substr($v, 1);
+                            if (array_key_exists($tag, $row)) {
+                                $v = $row[$tag];
+                            }
+                        }
+
                         $s .= "&";
                         $s .= $k . "=" . $v;
                     }
@@ -115,5 +131,10 @@ if (null !== $ric) {
                 'confirmCancelBtn' => "Annuler",
             ],
         ];
+
+        if (array_key_exists("formRouteExtraActions", $conf)) {
+            $defaultConf['rowActions'] = array_merge($defaultConf['rowActions'], $conf['formRouteExtraActions']);
+        }
+
     }
 }

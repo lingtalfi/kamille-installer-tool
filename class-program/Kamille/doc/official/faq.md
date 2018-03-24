@@ -5,6 +5,22 @@ Faq
 
 
 
+Général
+=============
+
+Qu'est-ce que c'est ric?
+-----------------------
+
+RIC: row identying columns.
+
+L'ensemble de (nom de) colonnes qui identifient un enregistrement de manière unique.
+
+En terme de code, il s'agit d'un tableau.
+Souvent, ric est un tableau contenant uniquement un champ: id. 
+
+
+
+
 Contrôleur et code php
 =============
 
@@ -79,7 +95,11 @@ A::chronosPoint("page.perf");
 
 
 
+Comment savoir si un module est installé?
+------------------------------
 
-
-
-
+```php
+if (ModuleInstallationRegister::isInstalled("PeiPei")) {
+    // le module PeiPei est installé   
+}
+```

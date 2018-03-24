@@ -14,6 +14,7 @@ use DirectoryCleaner\DirectoryCleaner;
 use Kamille\Architecture\ApplicationParameters\ApplicationParameters;
 use Kamille\Utils\Console\PageCreatorProgram;
 use Kamille\Utils\ModulePacker\KamilleModulePacker;
+use Kamille\Utils\ModuleUtils\NewModuleProgram;
 use Output\ProgramOutputInterface;
 use Program\ProgramHelper;
 use Program\ProgramInterface;
@@ -79,68 +80,74 @@ class KamilleApplicationItemManagerProgram extends ApplicationItemManagerProgram
                     passthru($cmd);
                 }
             })
+            ->addCommand("newmodule", function (CommandLineInputInterface $input, ProgramOutputInterface $output, ProgramInterface $program) use ($itemType) {
+
+
+                $module = $input->getOptionValue("name");
+                try {
+
+                    NewModuleProgram::create()->setModuleName($module)->execute();
+                    $output->success("Ok");
+                    $output->info("Now you might want to install the module (kamille install $module)");
+                } catch (\Exception $e) {
+                    $output->error("An exception occurred with message: " . $e->getMessage());
+                }
+
+            })
             ->addCommand("newpage", function (CommandLineInputInterface $input, ProgramOutputInterface $output, ProgramInterface $program) use ($itemType) {
 
-                $routeId = $input->getParameter(2);
-                $url = $input->getParameter(3);
-                $controllerString = $input->getParameter(4);
-                $module = $input->getParameter(5);
-                $controllerModel = "Dummy";
-                $f = $this->getCurrentDir() . "/kit-newpage.ini";
-                $env = $input->getOptionValue('e');
 
-
-                // developer space
-                //--------------------------------------------
-                $controllerDir = "Pages";
-                $defaultEnv = 'back';
-                $defaultModule = 'ThisApp';
-                $controllerModelDir = null;
-
-                if (file_exists($f)) {
-                    $conf = parse_ini_file($f);
-                    if (array_key_exists("controllerModel", $conf)) {
-                        $controllerModel = $conf['controllerModel'];
-                    }
-                    if (array_key_exists("controllerDir", $conf)) {
-                        $controllerDir = $conf['controllerDir'];
-                    }
-                    if (array_key_exists("defaultEnv", $conf)) {
-                        $defaultEnv = $conf['defaultEnv'];
-                    }
-                    if (array_key_exists("defaultModule", $conf)) {
-                        $defaultModule = $conf['defaultModule'];
-                    }
-                    if (array_key_exists("controllerModelDir", $conf)) {
-                        $controllerModelDir = $conf['controllerModelDir'];
-                    }
-
+                $conf = [];
+                $confFile = $this->getCurrentDir() . "/kit-newpage.ini";
+                if (file_exists($confFile)) {
+                    $conf = parse_ini_file($confFile);
+                    /**
+                     * - module: mandatory, the module name
+                     * - route: default=Dummy_Route     (will be automatically prefixed with the module name)
+                     * - controllerModelDir: default=null, the directory where controller models are looked for
+                     * - controllerModel: default=Dummy, the name of the controller model to use (inside the controllerModelDir)
+                     * - uri: default=null, the uri of the page (if null, will be based on the route
+                     * - controllerDir: default=Pages, the name of the dir in which the controller file will be generated
+                     * - controllerString: default=null, the name of the controller; if null, some default name will be generated based on the route
+                     * - env: default=front (back|front), defines where to create the routes
+                     */
                 }
 
-                if (null === $env) {
-                    $env = $defaultEnv;
+                $module = $input->getOptionValue("module", $conf['module'] ?? null);
+
+                if ($module) {
+
+
+                    $routeId = $input->getOptionValue("route", $conf['route'] ?? "Dummy_Route"); // note: the module will be prefixed to it...
+                    $controllerModelDir = $input->getOptionValue("controllerModelDir", $conf['controllerModelDir'] ?? null);
+                    $controllerModel = $input->getOptionValue("controllerModel", $conf['controllerModel'] ?? "Dummy");
+                    $uri = $input->getOptionValue("uri", $conf['uri'] ?? null);
+                    $env = $input->getOptionValue("env", $conf['env'] ?? "front");
+                    $controllerString = $input->getOptionValue("controllerString", $conf['controllerString'] ?? null);
+                    $controllerDir = $input->getOptionValue("controllerDir", $conf['controllerDir'] ?? "Pages");
+
+                    //--------------------------------------------
+                    // NEW PAGE
+                    //--------------------------------------------
+                    $ret = PageCreatorProgram::create()
+                        ->setModule($module)
+                        ->setRouteId($routeId)
+                        ->setControllerModelDir($controllerModelDir)
+                        ->setControllerModel($controllerModel)
+                        ->setUrl($uri)
+                        ->setControllerString($controllerString)
+                        ->setControllerDir($controllerDir)
+                        ->setEnv($env)
+                        ->execute();
+
+                    $output->success("The page has been generated with following info:");
+                    foreach ($ret as $k => $v) {
+                        $output->notice("- $k: $v");
+                    }
+
+                } else {
+                    $output->error("The module is not defined");
                 }
-                if (null === $module) {
-                    $module = $defaultModule;
-                }
-
-
-                $ret = PageCreatorProgram::create()
-                    ->setControllerModelDir($controllerModelDir)
-                    ->setControllerModel($controllerModel)
-                    ->setModule($module)
-                    ->setRouteId($routeId)
-                    ->setUrl($url)
-                    ->setControllerString($controllerString)
-                    ->setControllerDir($controllerDir)
-                    ->setEnv($env)
-                    ->execute();
-
-                $output->success("The page has been generated with following info:");
-                foreach ($ret as $k => $v) {
-                    $output->notice("- $k: $v");
-                }
-
 
             })
             //--------------------------------------------

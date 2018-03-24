@@ -85,12 +85,14 @@ class MorphicGenerator2 implements MorphicGenerator2Interface
             }
 
 
+            // now generating the subset that we want
             foreach ($this->db2Tables as $db => $tables) {
                 foreach ($tables as $table) {
                     $info = $this->db2TableInfo[$db][$table];
                     $this->generateByTableInfo($info);
                 }
             }
+
         } else {
             // don't know this generation technique yet
         }
@@ -131,6 +133,11 @@ class MorphicGenerator2 implements MorphicGenerator2Interface
     //--------------------------------------------
     //
     //--------------------------------------------
+    protected function doGenerate()
+    {
+
+    }
+
     protected function generateByTableInfo(array $tableInfo)
     {
         $table2Aliases = $tableInfo['table2Aliases'];
@@ -144,9 +151,13 @@ class MorphicGenerator2 implements MorphicGenerator2Interface
     {
         $tablesBasicInfo = [];
         foreach ($db2Tables as $db => $tables) {
-            $db2Tables = $this->getAllDbBasicInfo($db);
-            foreach ($tables as $table) {
-                $tablesBasicInfo[$db . "." . $table] = $db2Tables[$table];
+            /**
+             * Actually, since tables sometimes reference other tables from other modules),
+             * we generate information for all tables in the database no matter what.
+             */
+            $allTables = $this->getAllTablesBasicInfo($db);
+            foreach ($allTables as $tableInfo) {
+                $tablesBasicInfo[$db . "." . $tableInfo['table']] = $tableInfo;
             }
         }
         return $tablesBasicInfo;
@@ -202,9 +213,13 @@ class MorphicGenerator2 implements MorphicGenerator2Interface
 
         $s = '';
         $s .= $this->_getControllerClassHeader($tableInfo);
+        $s .= $this->_getControllerTopMethods($tableInfo);
         $s .= $this->_getControllerRenderMethod($tableInfo);
         $s .= $this->_getControllerRenderWithParentMethod($tableInfo);
         $s .= $this->_getControllerRenderWithNoParentMethod($tableInfo);
+        $s .= $this->_getControllerGetRicMethod($tableInfo);
+//        $s .= $this->_getControllerGetAddBtnTextByAvatarMethod($tableInfo);
+//        $s .= $this->_getControllerGetRenderWithParentTitle($tableInfo);
 
         $s .= <<<EEE
 
@@ -330,7 +345,9 @@ EEE;
 
 
                 $route = $this->getTableRouteByTable($item[1]);
-                list($label, $labelPlural) = $this->guessLabelsByTable($item[1]);
+
+                $pivotTableInfo = $this->db2TableInfo[$item[0]][$item[1]];
+                $labelPlural = $pivotTableInfo['labelPlural'];
 
                 $args = '';
                 $ric2val = $item[2];
@@ -385,6 +402,17 @@ EEE;
     }
 
 
+    protected function getFormInsertSuccessMessage(array $tableInfo, $table, $label)
+    {
+        return "Le/la " . $label . " a bien été ajouté(e)";
+    }
+
+    protected function getFormUpdateSuccessMessage(array $tableInfo, $table, $label)
+    {
+        return "Le/la " . $label . " a bien été mis(e) à jour";
+    }
+
+
     protected function _getFormConfigConfProcess(array $tableInfo, array $inferred)
     {
 
@@ -400,13 +428,14 @@ EEE;
         $commaRics = '$' . implode(', $', $ric);
 
 
-        $formInsertSuccessMsg = "Le/la " . $label . " a bien été ajouté(e)";
-        $formUpdateSuccessMsg = "Le/la " . $label . " a bien été mis(e) à jour";
+        $formInsertSuccessMsg = $this->getFormInsertSuccessMessage($tableInfo, $table, $label);
+        $formUpdateSuccessMsg = $this->getFormUpdateSuccessMessage($tableInfo, $table, $label);
 
 
         $insertCols = '';
         $updateCols = '';
         $updateWhere = '';
+        $updateWhereCols = [];
         $indent = "\t\t\t\t";
         foreach ($cols as $col) {
 
@@ -435,10 +464,15 @@ EEE;
 
             if (true === $inRic) {
                 $updateWhere .= $indent . '["' . $col . '", "=", $' . $col . '],' . PHP_EOL;
+                $updateWhereCols[] = $col;
             }
         }
 
         $sessionFlagName = "form-generated-$table";
+
+        $sInsertStatement = $this->getFormInsertStatement($tableInfo, $table, $insertCols);
+        $sUpdateStatement = $this->getFormUpdateStatement($tableInfo, $table, $updateCols, $updateWhere, $updateWhereCols);
+
 
         $s = <<<EEE
     'feed' => MorphicHelper::getFeedFunction("$table", function (SokoFormInterface \$form) {
@@ -449,9 +483,7 @@ EEE;
     'process' => function (\$fData, SokoFormInterface \$form) use (\$isUpdate, \$ric, $commaRics) {
             
         if (false === \$isUpdate) {
-            \$ric = QuickPdo::insert("$table", [
-$insertCols
-            ], '', \$ric);
+$sInsertStatement
             \$form->addNotification("$formInsertSuccessMsg", "success");
             
             if (array_key_exists("submit-and-update", \$_POST)) {
@@ -460,11 +492,7 @@ $insertCols
             }
             
         } else {
-            QuickPdo::update("$table", [
-$updateCols
-            ], [
-$updateWhere            
-            ]);
+$sUpdateStatement
             \$form->addNotification("$formUpdateSuccessMsg", "success");
         }
         return false;
@@ -476,9 +504,32 @@ EEE;
         return $s;
     }
 
+    protected function getFormInsertStatement(array $tableInfo, $table, $insertCols)
+    {
+        return <<<EEE
+            \$ric = QuickPdo::insert("$table", [
+$insertCols
+            ], '', \$ric);
+EEE;
+    }
+
+    protected function getFormUpdateStatement(array $tableInfo, $table, $updateCols, $updateWhere, array $updateWhereCols)
+    {
+        return <<<EEE
+            QuickPdo::update("$table", [
+$updateCols
+            ], [
+$updateWhere            
+            ]);
+EEE;
+    }
+
 
     protected function _getFormConfigConfTop(array $tableInfo, array $inferred)
     {
+
+        $title = ucfirst($tableInfo["label"]);
+
         $s = <<<EEE
 //--------------------------------------------
 // FORM
@@ -487,7 +538,7 @@ EEE;
     //--------------------------------------------
     // FORM WIDGET
     //--------------------------------------------
-    'title' => "$tableInfo[label]",
+    'title' => "$title",
     //--------------------------------------------
     // SOKO FORM
     'form' => SokoForm::create()
@@ -504,10 +555,10 @@ EEE;
         $cols = $tableInfo["columns"];
         $fks = $tableInfo["fks"];
         $ai = $tableInfo["ai"];
+        $table = $tableInfo["table"];
         $columnTypes = $tableInfo["columnTypes"];
         $nullableKeys = $tableInfo['columnNullables'];
         $columnTypesPrecision = $tableInfo['columnTypesPrecision'];
-
         $autocompletes = $this->getConfiguration("formControlTypes.autocomplete", []);
 
 
@@ -515,7 +566,8 @@ EEE;
             foreach ($cols as $col) {
 
 
-                $label = $this->identifierToLabel($col);
+                $label = $this->identifierToLabel($col, $table);
+
                 $type = $columnTypes[$col];
                 $typePrecision = $columnTypesPrecision[$col];
                 $isNullable = false;
@@ -542,14 +594,14 @@ EEE;
                             $class = "SokoAutocompleteInputControl";
                             $sExtra = $this->getAutocompleteControlContent($col);
                             $readOnly = '(null !== $' . $col . ')';
-                            $sExtraLink = $this->getForeignKeyExtraLink('autocomplete', $col, $label, $fkRoute);
+                            $sExtraLink = $this->getForeignKeyExtraLink('autocomplete', $col, $label, $fkRoute, $tableInfo, $fkTableInfo);
                         } else {
                             $class = "SokoChoiceControl";
                             $sExtra = <<<EEE
             ->setChoices(\$choice_$col)
 EEE;
                             $readOnly = '(null !== $' . $col . ')';
-                            $sExtraLink = $this->getForeignKeyExtraLink('fk', $col, $label, $fkRoute);
+                            $sExtraLink = $this->getForeignKeyExtraLink('fk', $col, $label, $fkRoute, $tableInfo, $fkTableInfo);
 
                         }
                     }
@@ -583,8 +635,6 @@ EEE;
                     ];
                     if (false === $this->doPrepareColumnControl($file, $params, $tableInfo)) {
 
-                        $label = ucfirst($col);
-
 
                         switch ($type) {
                             case "tinyblob":
@@ -615,7 +665,7 @@ EEE;
             ])
                         ';
                                 $s .= PHP_EOL . <<<EEE
-        ->addControl(EkomSokoDateControl::create()
+        ->addControl(SokoDateControl::create()
             ->setName("$col")
             ->setLabel("$label")
             $sProps
@@ -633,7 +683,7 @@ EEE;
             ])
                         ';
                                 $s .= PHP_EOL . <<<EEE
-        ->addControl(EkomSokoDateControl::create()
+        ->addControl(SokoDateControl::create()
             ->useDatetime()
             ->setName("$col")
             ->setLabel("$label")
@@ -677,6 +727,25 @@ EEE;
 
     protected function doPrepareColumnControl(&$s, array $params, array $tableInfo)
     {
+        $type = $params['type'];
+        $col = $params['column'];
+        $label = $params['label'];
+
+
+        switch ($type) {
+            case "date":
+
+
+                $s .= PHP_EOL . <<<EEE
+        ->addControl(SokoDateControl::create()
+            ->setName("$col")
+            ->setLabel('$label')
+        )
+EEE;
+                return true;
+                break;
+        }
+
         return false;
     }
 
@@ -777,6 +846,7 @@ use SokoForm\Form\SokoForm;
 use SokoForm\Control\SokoAutocompleteInputControl;
 use SokoForm\Control\SokoInputControl;
 use SokoForm\Control\SokoChoiceControl;
+use SokoForm\Control\SokoDateControl;
 use SokoForm\Control\SokoBooleanChoiceControl;
 EEE;
 
@@ -867,6 +937,7 @@ EEE;
 
 
         $viewId = $tableInfo["table"];
+        $table = $tableInfo["table"];
         $cols = $tableInfo["columns"];
         $columnTypes = $tableInfo["columnTypes"];
         $fks = $tableInfo["fks"];
@@ -875,10 +946,11 @@ EEE;
         $headers = [];
         $qCols = [];
 
+
         foreach ($cols as $col) {
 
             if (false === strpos($columnTypes[$col], 'blob')) {
-                $label = $this->identifierToLabel($col);
+                $label = $this->identifierToLabel($col, $table);
                 $headers[$col] = $label;
                 $qCols[] = 'h.' . $col;
             }
@@ -886,6 +958,7 @@ EEE;
 
 
         $reversedKeys = $tableInfo['reversedFks'];
+
         foreach ($reversedKeys as $fullTable => $v) {
             $p = explode(".", $fullTable);
             $db = $p[0];
@@ -899,7 +972,8 @@ EEE;
 
 
             $name = $this->getNameByTable($table);
-            $label = $this->identifierToLabel($name);
+            $label = ucfirst($this->db2TableInfo[$db][$table]['label']);
+
             $headers[$name] = $label;
             $rcMap[$name] = [];
             $c = 0;
@@ -932,6 +1006,7 @@ EEE;
         $sRic = ArrayToStringTool::toPhpArray($originalRic, null, 4);
         $sQCols = ArrayToStringTool::toPhpArray($qCols, null, 4);
 
+        $title = ucfirst($tableInfo["labelPlural"]);
         $s = <<<EEE
 
 
@@ -944,12 +1019,11 @@ EEE;
     //--------------------------------------------
     // LIST WIDGET
     //--------------------------------------------
-    'title' => "$tableInfo[labelPlural]",
+    'title' => "$title",
     'table' => '$tableInfo[table]',
     /**
      * This is actually the list.conf identifier
      */
-    'viewId' => '$viewId',
     "headers" => $sHeaders,
     "headersVisibility" => $sHeadersVis,
     "realColumnMap" => $sRcMap,
@@ -957,9 +1031,6 @@ EEE;
     "queryCols" => $sQCols,
     "ric" => $sRic,
     "formRouteExtraVars" => \$parentValues,
-    /**
-     * formRoute is just a helper, it will be used to generate the rowActions key.
-     */
     'formRoute' => "$tableInfo[route]",    
     'context' => \$context,
 ];
@@ -1003,11 +1074,15 @@ EEE;
     }
 
 
-    protected function identifierToLabel($identifier)
+    protected function identifierToLabel($identifier, $table)
     {
         return ucfirst(str_replace('_', ' ', $identifier));
     }
 
+    protected function decorateTableInfo(array &$tableInfo)
+    {
+
+    }
 
     //--------------------------------------------
     //
@@ -1028,6 +1103,7 @@ EEE;
         $a['labelPlural'] = $labelPlural;
         $a['camel'] = $this->getCamelByTable($tableBasicInfo['table']);
         $a['route'] = $this->getTableRouteByTable($a['table']);
+        $this->decorateTableInfo($a);
         return $a;
     }
 
@@ -1046,7 +1122,7 @@ EEE;
     }
 
 
-    private function getAllDbBasicInfo($db)
+    private function getAllTablesBasicInfo($db)
     {
 
         $f = $this->getCacheFile($db);
@@ -1083,17 +1159,27 @@ EEE;
         FileSystemTool::mkfile("/tmp/MorphicGenerator2/tmp.php", $str);
     }
 
+    protected function getRenderWithParentCodeBlockLangInfo($tableInfo)
+    {
+        $label = $tableInfo['label'];
+        $labelPlural = $tableInfo['labelPlural'];
+        return [
+            'label' => $label,
+            'labelPlural' => $labelPlural,
+        ];
+    }
+
     private function getRenderWithParentCodeBlock($fullTable, array $cols)
     {
 
         $p = explode(".", $fullTable);
-        if (count($p) > 1) {
-            $table = array_pop($p);
-        } else {
-            $table = array_shift($p);
-        }
+        list($db, $table) = $p;
+        $tableInfo = $this->db2TableInfo[$db][$table];
 
-        list($label, $labelPlural) = $this->guessLabelsByTable($table);
+
+        $langInfo = $this->getRenderWithParentCodeBlockLangInfo($tableInfo);
+        $sLangInfo = ArrayToStringTool::toPhpArray($langInfo, null, 16);
+
         $route = $this->getTableRouteByTable($table);
 
 
@@ -1103,19 +1189,16 @@ EEE;
             $aArrLinesGet[] = '"' . $col . '" => $_GET["' . $col . '"],';
             $aArrLines[] = '"' . $col . '" => "' . $parentCol . '",';
         }
-        $sArrLinesGet = implode(PHP_EOL . "\t\t\t\t", $aArrLinesGet);
-        $sArrLines = implode(PHP_EOL . "\t\t\t\t", $aArrLines);
+        $sArrLinesGet = implode(PHP_EOL . "\t\t\t\t\t", $aArrLinesGet);
+        $sArrLines = implode(PHP_EOL . "\t\t\t\t\t", $aArrLines);
 
         return <<<EEE
         
-            return \$this->renderWithParent("$table", [
-                $sArrLinesGet
-            ], [
-                $sArrLines
-            ], [
-                "$label",
-                "$labelPlural",
-            ], "$route");
+                return \$this->renderWithParent("$table", [
+                    $sArrLinesGet
+                ], [
+                    $sArrLines
+                ], $sLangInfo, \$this->configValues['parent2Route']["$table"]);
 EEE;
     }
 
@@ -1130,11 +1213,62 @@ EEE;
 namespace Controller\Morphic\Generated\\$tableInfo[camel];
 use Controller\Morphic\Pattern\MorphicListController;
 use Kamille\Utils\Morphic\Exception\MorphicException;
+use Core\Services\A;
 
 
 class $tableInfo[camel]ListController extends MorphicListController
 {
+EEE;
 
+        return $s;
+
+    }
+
+    protected function getControllerConstructorExtraStatements()
+    {
+        return '';
+    }
+
+    protected function _getControllerTopMethods(array $tableInfo)
+    {
+
+        $originalTableInfo = $tableInfo;
+        $parent2Route = [];
+        $reversedFks = $tableInfo['reversedFks'];
+        if ($reversedFks) {
+            foreach ($reversedFks as $fkFullTable => $colsInfo) {
+                $p = explode(".", $fkFullTable);
+                list($db, $table) = $p;
+                $tableInfo = $this->db2TableInfo[$db][$table];
+                $route = $this->getTableRouteByTable($table);
+                $parent2Route[$table] = $route;
+            }
+        }
+        $sParent2Route = ArrayToStringTool::toPhpArray($parent2Route, null, 12);
+        $constructorExtraStatements = $this->getControllerConstructorExtraStatements();
+
+        $s = <<<EEE
+        
+    protected \$configValues;
+
+    public function __construct()
+    {
+        parent::__construct();
+        \$this->configValues = [
+            'route' => "$originalTableInfo[route]",
+            'form' => "$originalTableInfo[table]",
+            'list' => "$originalTableInfo[table]",
+            'parent2Route' => $sParent2Route,
+        ];
+        $constructorExtraStatements                        
+    }
+
+    protected function addConfigValues(array \$configValues)
+    {
+        \$this->configValues = array_merge(\$this->configValues, \$configValues);
+        return \$this;
+    }
+        
 EEE;
 
         return $s;
@@ -1155,12 +1289,15 @@ EEE;
         
     public function render()
     {        
-        //--------------------------------------------
-        // USING PARENTS
-        //--------------------------------------------
+    
+        \$ric = \$this->getRic();
+        if (false === \$this->ricInGet(\$ric, \$_GET)) {
+            //--------------------------------------------
+            // USING PARENTS
+            //--------------------------------------------
 EEE;
 
-        $mul = PHP_EOL . "\t\t\t";
+        $mul = PHP_EOL . "\t\t\t\t\t";
 
 
         //--------------------------------------------
@@ -1170,18 +1307,19 @@ EEE;
 
         if ($reversedFks) {
 
+
             foreach ($reversedFks as $fkFullTable => $colsInfo) {
                 $conds = [];
-                $s .= PHP_EOL . "\t\t";
+                $s .= PHP_EOL . "\t\t\t";
 
                 if (0 === $c++) {
-                    $s .= 'if ( ';
+                    $s .= 'if (';
                 } else {
-                    $s .= '} elseif ( ';
+                    $s .= '} elseif (';
                 }
 
                 foreach ($colsInfo as $info) {
-                    $conds[] = 'array_key_exists ( "' . $info[0] . '", $_GET)';
+                    $conds[] = 'array_key_exists("' . $info[0] . '", $_GET)';
                 }
 
                 if (count($conds) > 1) {
@@ -1191,7 +1329,7 @@ EEE;
                 $s .= implode(' &&' . $mul, $conds);
 
                 if (count($conds) > 1) {
-                    $s .= PHP_EOL . "\t\t";
+                    $s .= PHP_EOL . "\t\t\t";
                 }
                 $s .= ') {';
 
@@ -1202,9 +1340,10 @@ EEE;
                 $s .= $this->getRenderWithParentCodeBlock($fkFullTable, $cols);
             }
 
-            $s .= PHP_EOL . "\t\t" . '}';
+            $s .= PHP_EOL . "\t\t\t" . '}';
         }
 
+        $s .= PHP_EOL . "\t\t}";
         $s .= PHP_EOL . "\t\t";
         $s .= 'return $this->renderWithNoParent();';
         $s .= <<<EEE
@@ -1225,24 +1364,34 @@ EEE;
         }
         $sRic = implode(PHP_EOL . "\t\t\t\t", $ricCols);
 
+
+        $labelPlural = ucfirst($tableInfo['labelPlural']);
+        $label = ucfirst($tableInfo['label']);
+
         $s = <<<EEE
 
     protected function renderWithParent(\$parentTable, array \$parentKey2Values, array \$parentKeys2ReferenceKeys, array \$labels, \$route)
     {
         \$elementInfo = [
             'table' => "$tableInfo[table]",
-            'ric' => [
-                $sRic
-            ],
-            'label' => "$tableInfo[label]",
-            'labelPlural' => "$tableInfo[labelPlural]",
-            'route' => "$tableInfo[route]",
+            'ric' => \$this->getRic(),
+            'label' => "$label",
+            'labelPlural' => "$labelPlural",
+            'form' => \$this->configValues['form'],
+            'list' => \$this->configValues['list'],
+            'route' => \$this->configValues['route'],
         ];
         return \$this->doRenderWithParent(\$elementInfo, \$parentTable, \$parentKey2Values, \$parentKeys2ReferenceKeys, \$labels, \$route);
     }
     
 EEE;
         return $s;
+    }
+
+
+    protected function getControllerNewItemBtnText(array $tableInfo)
+    {
+        return "Add a new $tableInfo[label]";
     }
 
     protected function _getControllerRenderWithNoParentMethod(array $tableInfo)
@@ -1255,7 +1404,10 @@ EEE;
         $sRic = implode(PHP_EOL . "\t\t\t\t\t", $ricCols);
 
         $sExtra = $this->_getControllerRenderWithNoParentMethodExtraVar($tableInfo);
+        $newItemBtnText = $this->getControllerNewItemBtnText($tableInfo);
 
+
+        $title = ucfirst($tableInfo["labelPlural"]);
 
         $s = <<<EEE
         
@@ -1263,24 +1415,77 @@ EEE;
     {
         if ('hasAdminPower') {
 
+            \$menuCurrentRoute = null;
+            if (array_key_exists("menuCurrentRoute", \$this->configValues)) {
+                \$menuCurrentRoute = \$this->configValues['menuCurrentRoute'];
+            } else {
+                \$menuCurrentRoute = \$this->configValues['route'];
+            }
+
             return \$this->doRenderFormList([
-                'title' => "$tableInfo[labelPlural]",
+                'title' => "$title",
                 'breadcrumb' => "$tableInfo[table]",
-                'form' => "$tableInfo[table]",
-                'list' => "$tableInfo[table]",
+                'form' => \$this->configValues['form'],
+                'list' => \$this->configValues['list'],
                 'ric' => [
                     $sRic
                 ],
 
-                "newItemBtnText" => "Add a new $tableInfo[label]",
-                "newItemBtnLink" => E::link("$tableInfo[route]") . "?form",
-                "route" => "$tableInfo[route]",
+                "newItemBtnText" => "$newItemBtnText",
+                "newItemBtnLink" => A::link(\$this->configValues['route']) . "?form&s",
+                "route" => \$this->configValues['route'],
                 $sExtra
+                "menuCurrentRoute" => \$menuCurrentRoute,
                 "context" => [],
             ]);
         } else {
             throw new MorphicException("not permitted");
         }
+    }
+    
+EEE;
+        return $s;
+    }
+
+
+    protected function _getControllerGetRicMethod(array $tableInfo)
+    {
+
+        $sRic = ArrayToStringTool::toPhpArray($tableInfo['ric'], null, 8);
+
+        $s = <<<EEE
+        
+    protected function getRic()
+    {
+        return $sRic;
+    }
+    
+EEE;
+        return $s;
+    }
+
+
+    protected function _getControllerGetAddBtnTextByAvatarMethod(array $tableInfo)
+    {
+        $s = <<<EEE
+        
+    protected function getAddBtnTextByAvatar(\$parentAvatar, \$elementLabel, \$parentLabel)
+    {
+        \$elementLabel = lcfirst(\$elementLabel);
+        return "Add a \$elementLabel for \$parentLabel \"\$parentAvatar\"";
+    }        
+    
+EEE;
+        return $s;
+    }
+
+    protected function _getControllerGetRenderWithParentTitle(array $tableInfo)
+    {
+        $s = <<<EEE
+        
+    protected function getRenderWithParentTitle(\$parentAvatar, \$elementLabelPlural, \$parentLabel)
+    {
+        return "\$elementLabelPlural for \$parentLabel \"\$parentAvatar\"";
     }
     
 EEE;
@@ -1301,12 +1506,48 @@ EEE;
      * @param $label
      * @return string
      */
-    protected function getForeignKeyExtraLink($fkType, $col, $label, $route)
+
+    protected function getForeignKeyExtraLink($fkType, $col, $label, $route, array $tableInfo, array $fkTableInfo)
     {
+        if ('ai' !== $fkType) {
+
+            $rks = $tableInfo['rks'];
+
+
+            $reversedFields = [];
+            foreach ($rks as $info) {
+                if ($info[1] === $fkTableInfo['table']) {
+                    $reversedFields = $info[2];
+                    break;
+                }
+            }
+
+
+            $linkArgs = '';
+            if ($reversedFields) {
+                foreach ($reversedFields as $k => $v) {
+                    $linkArgs .= "&$v=' . \$$k . '";
+                }
+            }
+
+            $text = $this->getForeignKeyExtraLinkText($label, $tableInfo, $fkTableInfo);
+
+            return "
+                'extraLink' => [
+                    'text' => '$text',
+                    'icon' => 'fa fa-plus',
+                    'link' => A::link('$route') . '?form$linkArgs',
+                ],";
+        }
         return "";
     }
 
 
+    protected function getForeignKeyExtraLinkText($label, array $tableInfo, array $fkTableInfo)
+    {
+        return "Create a new element \"$label\"";
+//        return "Créer un nouvel élément \"$label\"";
+    }
     //--------------------------------------------
     //
     //--------------------------------------------

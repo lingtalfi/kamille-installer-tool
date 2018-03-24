@@ -122,14 +122,26 @@ class MorphicHelper
     }
 
 
-    public static function getFeedFunction($table, callable $onFeedAfter = null)
+    public static function getFeedFunction($table, callable $onFeedAfter = null, array $ricMap = [])
     {
-        return self::getFeedFunctionByQuery("select * from `$table`", $onFeedAfter);
+        return self::getFeedFunctionByQuery("select * from `$table`", $onFeedAfter, $ricMap);
     }
 
-    public static function getFeedFunctionByQuery($query, callable $onFeedAfter = null)
+    public static function getFeedFunctionByQuery($query, callable $onFeedAfter = null, array $ricMap = [])
     {
-        return function (SokoFormInterface $form, array $ric) use ($query, $onFeedAfter) {
+        return function (SokoFormInterface $form, array $ric) use ($query, $onFeedAfter, $ricMap) {
+            if ($ricMap) {
+                $oldRic = $ric;
+                $ric = [];
+                foreach($oldRic as $col){
+                    if (array_key_exists($col, $ricMap)) {
+                        $col = $ricMap[$col];
+                    }
+                    $ric[] = $col;
+                }
+            }
+
+
             $markers = [];
             $values = array_intersect_key($_GET, array_flip($ric));
             $q = $query;

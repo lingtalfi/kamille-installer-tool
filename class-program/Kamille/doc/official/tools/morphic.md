@@ -92,6 +92,56 @@ Le modèle en question: `class-controllers/Ekom/Back/Pattern/EkomBackSimpleFormL
 
 
 
+#### Configuration d'un contrôleur
+
+
+Certains contrôleurs, par le biais de l'héritage de classes, peuvent mettre à disposition des méthodes
+de configuration pratiques pour le développeur.
+
+
+Voici un exemple de contrôleur fourni par le module [ekom](https://github.com/KamilleModules/Ekom) (module de e-commerce pour kamille)
+qui étend un contrôleur généré par l'outil morphic, et surcharge certaines valeurs de configuration.
+
+```php
+<?php
+
+namespace Controller\Ekom\Back\Catalog;
+
+
+use Controller\Ekom\Back\Generated\EkProductHasTag\EkProductHasTagListController;
+
+class ProductHasTagListController extends EkProductHasTagListController
+{
+    public function __construct()
+    {
+        parent::__construct();
+        $this->addConfigValues([
+            'route' => "Ekom_Catalog_ProductHasTag_List",
+            'form' => "back/catalog/product_has_tag",
+            'list' => "back/catalog/product_has_tag",
+            /**
+             * This defines the selected menu item (left menu of nullos)
+             * when you render a formList using the "withParent" method WITHOUT
+             * specifying the ric in the uri
+             */
+            'parent2Route' => [
+                'ek_product' => 'Ekom_Generated_EkProduct_List',
+                'ek_tag' => 'Ekom_Catalog_Tag_List',
+            ],
+            /**
+             * This defines the selected menu item (left menu of nullos)
+             * when you render a formList using the "withNoParent" method WITH
+             * specifying the ric in the uri
+             */
+            "menuCurrentRoute" => "Ekom_Catalog_Tag_List",
+        ]);
+    }
+}
+
+```
+
+
+
 
 
 
@@ -124,8 +174,11 @@ Voici les propriétés disponibles pour le fichier de configuration des listes m
 
 
 - `title`: le titre de la liste
-- `table`: une référence de la table. Est utilisée par l'ajax service back.morphic (`service/Ekom/ecp/api.php`)  
-- `viewId`: l'identifiant de la liste (par exemple: back/catalog/product)  
+- `table`: une référence de la table. Est utilisée par l'ajax service back.morphic (`service/NullosAdmin/ecp/api.php`)  
+- `object`: une référence vers un objet [xiao](https://github.com/lingtalfi/XiaoApi) qui vous permet de gérer des hooks supplémentaires. Est utilisée par l'ajax service back.morphic (`service/NullosAdmin/ecp/api.php`)
+Si vous définissez `object`, alors object sera utilisé à la place de table.  
+- `viewId`: optionnel, l'identifiant de la liste (par exemple: back/catalog/product). Il est transmis via ajax par la couche morphic.js de manière à synchroniser la liste
+générée par ajax et celle générée statiquement. Il est conseillé de ne pas renseigner cette valeur, et de laisser le système utiliser sa valeur par défaut.  
 - `headers`: les champs à afficher. Tableau de `column` => label. La dernière colonne spéciale est: `_action => ''` si vous utilisez les actions.   
 - `headersVisibility`: les colonnes à masquer. `column` => bool  
 - `realColumnMap`: permet de rectifier les fonctions de tri/recherche. Tableau de `column` => `queryRealCol`, queryRealCol étant le nom tel qu'utilisé dans la requête sql (exemple: pcl.product_card_id)  
@@ -139,18 +192,26 @@ Voici les propriétés disponibles pour le fichier de configuration des listes m
         callback ( columnValue, array row )
 
 - `formRoute`: la route du lien vers le formulaire correspondant. Ce mécanisme est utilisé dans la rowAction "update" par défaut 
-- `formRouteExtraVars`: des paramètres supplémentaires à ajouter au lien généré avec la propriété `formRoute` 
+- `formRouteUseRic`: bool=true, doit-on utiliser les valeurs ric dans la génération de la rowAction "update" par défaut
+- `formRouteExtraVars`: des paramètres supplémentaires (clé => valeur) à ajouter au lien généré avec la propriété `formRoute`.
+On peut utiliser les valeurs de row en préfixant la valeur par le symbole $. Exemple: test => $product_id est transformé en test => $row[product_id] 
 - `rowActionUpdateRicAdaptor`: un adaptateur (map) permettant de modifier les colonnes définies dans ric en d'autres champs pour ce qui concerne la génération du lien pour la rowAction "update" par défaut 
+- `formRouteExtraActions`: un tableau d'actions supplémentaires à ajouter aux rowActions par défaut (même stucture que `rowActions`)   
 - `rowActions`: laisser vide pour utiliser les actions par défaut. Un tableau d'action.
     - `name`: le nom symbolique de l'action (ex: update)             
     - `label`: le label (exemple: Modifier)             
     - `icon`: ex fa fa-pencil             
     - `link`: le lien             
+    - `?ecp`: pour appeler un service ecp en background, à utiliser **à la place** de link. La chaîne ecp correspond à l'argument target dont la syntaxe est la suivante: &lt;moduleName> &lt;:> &lt;serviceIdentifier>.
+    Il est possible de passer des arguments avec la propriété `args`.            
+    - `?ecpAfter`: fonctionne seulement si la propriété `ecp` est positionnée. L'action javascript à appeler après que la requête ecp se soit exécutée avec succès. Les valeurs possibles sont:
+        - `reload`: recharge la page               
+    - `?args`: un tableau (clé => valeur) d'arguments disponible lorsque la propriété `ecp` est positionnée.
+    Si la valeur est préfixée par le symbole $ et qu'elle correspond à une clé de ric, alors la valeur de ric correspondante sera envoyée  
     - `?confirm`: le texte de confirmation si c'est une action qui nécessite une confirmation             
     - `?confirmTitle`: le titre du dialogue de confirmation             
     - `?confirmOkBtn`: le texte de bouton validant la demande de confirmation             
     - `?confirmCancelBtn`: le texte de bouton annulant la demande de confirmation
-    
     
 La vue
 -----------------------

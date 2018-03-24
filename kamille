@@ -2,6 +2,29 @@
 <?php
 
 
+/**
+ * WORKFLOW: REMINDER
+ * -----------------------
+ * There is a planet conflicts:
+ *      planets are in kit, but also in calling app
+ *
+ * To address this problem, use the following methodologies:
+ *
+ * - extending the planets in kit
+ *
+ * - g kit (go to kit)
+ * - uni tolink (work with symlinks, so that you can commit your changes from kit)
+ * - do your changes to planets, then commit them...
+ * - then make them dir again so that the user downloading kit has concrete planets:
+ *          - uni todir
+ *          - uni clean (remove .git, otherwise no sending)
+ * - now you can commit kit
+ *      - guu
+ *
+ *
+ *
+ */
+
 use ApplicationItemManager\Importer\GithubImporter;
 
 
@@ -76,6 +99,9 @@ if (false === $inPlace) {
 $output = ProgramOutput::create();
 
 
+
+
+
 $widgetManager = LingApplicationItemManager::create()
     ->setOutput($output)
     ->setInstaller(KamilleWidgetInstaller::create()->setOutput($output)->setApplicationDirectory($appDir))
@@ -98,13 +124,16 @@ $moduleManager = LingApplicationItemManager::create()
 
 $input = ProgramOutputAwareCommandLineInput::create($argv)
     ->setProgramOutput($output)
-    ->addFlag("f")// force
-    ->addFlag("l")// flash to link instead of dirs
-    ->addFlag("d")// debug: todo: what's that for?
-    ->addFlag("t")// trace, complements debug
-    ->addFlag("v")// verbose, todo: do we really need that?
-    ->addFlag("in-place")
-    ->addOption("e") // environment for newpage command
+    ->setAcceptNotRegistered(true)
+
+//    ->addFlag("f")// force
+//    ->addFlag("l")// flash to link instead of dirs
+//    ->addFlag("d")// debug: todo: what's that for?
+//    ->addFlag("t")// trace, complements debug
+//    ->addFlag("v")// verbose, todo: do we really need that?
+//    ->addFlag("in-place")
+//    ->addOption("e") // environment for newpage command
+//    ->addOption("name")
 ;
 
 KamilleApplicationItemManagerProgram::create()

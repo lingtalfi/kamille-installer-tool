@@ -50,6 +50,9 @@ class ShortcutListConfigurationProvider extends ListConfigurationProvider
 
 
             $conf['module'] = $module;
+            if (false === array_key_exists('viewId', $conf)) {
+                $conf['viewId'] = $identifier;
+            }
 
         } else {
             throw new MorphicException("File not found: $file");

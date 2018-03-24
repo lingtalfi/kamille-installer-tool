@@ -58,6 +58,10 @@ En effet, la plupart des modules que je créé dépendent de planètes appartena
 
 
 
+> La méthode ModuleInstallationRegister::isInstalled($moduleName) permet de savoir si un module est déjà installé.
+                 
+             
+
 
 ### Les méthodes d'installation
 

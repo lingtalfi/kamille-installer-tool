@@ -167,6 +167,14 @@ History Log
 ===============
     
     
+- 1.121.1 -- 2018-03-24
+
+    - adjust some PageCreatorProgram class parameters
+    
+- 1.121.0 -- 2018-03-24
+
+    - add NewModuleProgram class
+    
 - 1.120.1 -- 2018-03-09
 
     - fix MorphicAdminListRenderer now transmits colTransformers

@@ -65,12 +65,15 @@ class MorphicAdminListRenderer
         if (array_key_exists('having', $config)) {
             $util->setHaving($config['having']);
         }
+        if (array_key_exists('operators', $config)) {
+            $util->setOperators($config['operators']);
+        }
         $info = $util->execute($params);
 
 
         $rows = $info['rows'];
         $renderer = Theme::getWidgetRenderer($this->widgetRendererIdentifier);
-        $renderer->setModel([
+        $renderer->setModel(array_merge($config, [
             'title' => $config['title'],
             'rows' => $rows,
             'module' => $config['module'],
@@ -94,7 +97,8 @@ class MorphicAdminListRenderer
             'deadCols' => (array_key_exists("deadCols", $config)) ? $config['deadCols'] : [],
             'colTransformers' => (array_key_exists("colTransformers", $config)) ? $config['colTransformers'] : [],
             'colSizes' => (array_key_exists("colSizes", $config)) ? $config['colSizes'] : [],
-        ]);
+            'ric' => (array_key_exists("ric", $config)) ? $config['ric'] : [],
+        ]));
         return $renderer->render();
     }
 

@@ -36,7 +36,7 @@ class XConfig
             $module = array_shift($p);
 
 
-            if (ModuleInstallationRegister::isInstalled($module)) {
+            if (array_key_exists($module, self::$confs) || ModuleInstallationRegister::isInstalled($module)) {
 
 
                 if (false === array_key_exists($module, self::$confs)) {

@@ -6,7 +6,7 @@ namespace Kamille\Utils\Console;
 
 use Bat\CaseTool;
 use Bat\FileSystemTool;
-use Core\Services\A;
+use Kamille\Architecture\ApplicationParameters\ApplicationParameters;
 use Kamille\Exception\KamilleException;
 use Kamille\Utils\Routsy\Util\ConfigGenerator\ConfigGenerator;
 
@@ -22,6 +22,7 @@ class PageCreatorProgram
     protected $controllerDir;
     protected $controllerModelDir;
     protected $env;
+    protected $appDir;
 
 
     public function __construct()
@@ -33,7 +34,7 @@ class PageCreatorProgram
         $this->controllerModel = "Dummy"; // look in assets directory
         $this->controllerDir = "Pages";
         $this->controllerModelDir = null;
-        $this->env = "back";
+        $this->env = "front";
     }
 
     public static function create()
@@ -46,13 +47,16 @@ class PageCreatorProgram
     {
         $module = $this->module;
         $env = $this->env;
+        if ('front' === $env) {
+            $env = "routes";
+        }
         $routeId = $this->routeId;
         $url = $this->url;
         $controllerString = $this->controllerString;
         $controllerDir = $this->controllerDir;
         $controllerModel = $this->controllerModel;
         $controllerModelDir = $this->controllerModelDir;
-        $appDir = A::appDir();
+        $appDir = ApplicationParameters::get("app_dir");
 
 
         //--------------------------------------------
@@ -60,7 +64,7 @@ class PageCreatorProgram
         //--------------------------------------------
         // resolve automatic guesses
         if (null === $url) {
-            $url = "/" . strtolower($controllerDir) . "/" . str_replace('_', '-', $routeId);
+            $url = "/" . strtolower($controllerDir) . "/" . str_replace('_', '-', strtolower($module . "_" . $routeId));
         }
         if (null === $module) {
             $module = "ThisApp";
