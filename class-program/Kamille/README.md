@@ -167,6 +167,10 @@ History Log
 ===============
     
     
+- 1.122.0 -- 2018-03-24
+
+    - enhance NewModuleProgram class, now also generate default HooksHelper
+    
 - 1.121.2 -- 2018-03-24
 
     - fix NewModuleProgram.setModuleName method not accepting null values

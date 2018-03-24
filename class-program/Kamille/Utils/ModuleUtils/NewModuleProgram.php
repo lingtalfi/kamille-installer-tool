@@ -105,6 +105,18 @@ class NewModuleProgram
             }
 
 
+            //--------------------------------------------
+            // Create HooksHelper
+            //--------------------------------------------
+            $dest = $moduleDir . "/HooksHelper/$moduleName" . "HooksHelper.php";
+            if (!file_exists($dest)) {
+                $content = $this->getTemplateContent("hookshelper", [
+                    'moduleName' => $moduleName,
+                ]);
+                FileSystemTool::mkfile($dest, $content);
+            }
+
+
         } else {
             $this->error("Module name not set");
         }
@@ -148,6 +160,12 @@ class NewModuleProgram
                     $moduleName,
                     $theDate,
                 ], $content);
+                break;
+            case "hookshelper":
+                $moduleName = $params['moduleName'];
+                $tpl = __DIR__ . "/assets/HooksHelper/DefaultHooksHelper.php";
+                $content = file_get_contents($tpl);
+                return str_replace('PeiPei', $moduleName, $content);
                 break;
             default:
                 $this->error("Unknown template with type=$type");
