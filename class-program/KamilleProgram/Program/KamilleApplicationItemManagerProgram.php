@@ -84,6 +84,7 @@ class KamilleApplicationItemManagerProgram extends ApplicationItemManagerProgram
 
 
                 $module = $input->getOptionValue("name");
+
                 try {
 
                     NewModuleProgram::create()->setModuleName($module)->execute();

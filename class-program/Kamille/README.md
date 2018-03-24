@@ -167,6 +167,10 @@ History Log
 ===============
     
     
+- 1.121.2 -- 2018-03-24
+
+    - fix NewModuleProgram.setModuleName method not accepting null values
+    
 - 1.121.1 -- 2018-03-24
 
     - adjust some PageCreatorProgram class parameters

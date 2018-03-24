@@ -19,7 +19,7 @@ class NewModuleProgram
         return new static();
     }
 
-    public function setModuleName(string $moduleName)
+    public function setModuleName($moduleName)
     {
         $this->moduleName = $moduleName;
         return $this;
