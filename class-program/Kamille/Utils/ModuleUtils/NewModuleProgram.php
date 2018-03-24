@@ -108,9 +108,20 @@ class NewModuleProgram
             //--------------------------------------------
             // Create HooksHelper
             //--------------------------------------------
-            $dest = $moduleDir . "/HooksHelper/$moduleName" . "HooksHelper.php";
+            $dest = $moduleDir . "/Helper/$moduleName" . "HooksHelper.php";
             if (!file_exists($dest)) {
                 $content = $this->getTemplateContent("hookshelper", [
+                    'moduleName' => $moduleName,
+                ]);
+                FileSystemTool::mkfile($dest, $content);
+            }
+
+            //--------------------------------------------
+            // Create ThemeHelper
+            //--------------------------------------------
+            $dest = $moduleDir . "/Helper/$moduleName" . "ThemeHelper.php";
+            if (!file_exists($dest)) {
+                $content = $this->getTemplateContent("themehelper", [
                     'moduleName' => $moduleName,
                 ]);
                 FileSystemTool::mkfile($dest, $content);
@@ -163,7 +174,13 @@ class NewModuleProgram
                 break;
             case "hookshelper":
                 $moduleName = $params['moduleName'];
-                $tpl = __DIR__ . "/assets/HooksHelper/DefaultHooksHelper.php";
+                $tpl = __DIR__ . "/assets/Helper/DefaultHooksHelper.php";
+                $content = file_get_contents($tpl);
+                return str_replace('PeiPei', $moduleName, $content);
+                break;
+            case "themehelper":
+                $moduleName = $params['moduleName'];
+                $tpl = __DIR__ . "/assets/Helper/DefaultThemeHelper.php";
                 $content = file_get_contents($tpl);
                 return str_replace('PeiPei', $moduleName, $content);
                 break;

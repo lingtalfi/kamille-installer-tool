@@ -167,6 +167,18 @@ History Log
 ===============
     
     
+- 1.126.0 -- 2018-03-24
+
+    - enhance NewModuleProgram, now creates a default ThemeHelper
+    
+- 1.125.0 -- 2018-03-24
+
+    - add KamilleModuleThemeHelper class
+    
+- 1.124.0 -- 2018-03-24
+
+    - ClawsRenderer now fallbacks to the _default_ theme if no layout and/or widget was found with a claws identifier
+    
 - 1.123.0 -- 2018-03-24
 
     - enhance PageCreatorProgram class, now create an appropriate module section in routsy file and put all routes there

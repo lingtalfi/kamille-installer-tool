@@ -417,6 +417,7 @@ EEE;
     {
 
         $table = $tableInfo['table'];
+        $database = $tableInfo['db'];
         $ric = $tableInfo['ric'];
         $label = $tableInfo['label'];
         $cols = $tableInfo['columns'];
@@ -475,7 +476,7 @@ EEE;
 
 
         $s = <<<EEE
-    'feed' => MorphicHelper::getFeedFunction("$table", function (SokoFormInterface \$form) {
+    'feed' => MorphicHelper::getFeedFunction("$database.$table", function (SokoFormInterface \$form) {
         if (SessionTool::pickupFlag("$sessionFlagName")) {
             \$form->addNotification("$formInsertSuccessMsg", "success");
         }
@@ -838,6 +839,9 @@ EEE;
     protected function _getFormConfigFileTop(array $tableInfo, array $inferred)
     {
         return <<<EEE
+<?php 
+
+        
 use Bat\SessionTool;        
 use QuickPdo\QuickPdo;
 use Kamille\Utils\Morphic\Helper\MorphicHelper;
@@ -863,14 +867,18 @@ EEE;
 
     protected function _getListConfigFileQuery(array $tableInfo, array $table2Aliases)
     {
+
         // find db prefixes (to find aliases)
         $reversedKeys = $tableInfo['reversedFks'];
         $nullables = $tableInfo['columnNullables'];
 
         $joins = [];
+
         foreach ($reversedKeys as $ftable => $colsInfo) {
             $p = explode('.', $ftable);
             $table = array_pop($p);
+            $db = array_pop($p);
+
             $prefix = $table2Aliases[$table];
 
             $onClause = [];
@@ -893,7 +901,7 @@ EEE;
             if ($hasNullable) {
                 $joinType = "left";
             }
-            $joins[] = "$joinType join $table `$prefix` on " . implode(' and ', $onClause);
+            $joins[] = "$joinType join `$db`.`$table` `$prefix` on " . implode(' and ', $onClause);
         }
 
 
@@ -902,7 +910,7 @@ EEE;
 
         $s = <<<EEE
         
-\$q = "select %s from `$tableInfo[table]` h
+\$q = "select %s from `$tableInfo[db]`.`$tableInfo[table]` h
 $sJoins  
 ";
 EEE;

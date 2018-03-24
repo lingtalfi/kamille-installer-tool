@@ -175,21 +175,6 @@ EEE;
     }
 
 
-    protected function _getFormConfigFileTop(array $tableInfo, array $inferred)
-    {
-        $s = <<<EEE
-<?php 
-
-use Module\Ekom\Back\Helper\BackFormHelper;
-
-
-EEE;
-
-
-        return $s;
-    }
-
-
     protected function getAutocompleteControlContent($column)
     {
         if ('_id' === substr($column, -3)) {

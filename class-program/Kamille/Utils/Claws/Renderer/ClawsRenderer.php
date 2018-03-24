@@ -69,6 +69,7 @@ class ClawsRenderer
             $theme = ApplicationParameters::get("theme");
             $wloader = $this->getWidgetDefaultLoader($appDir, $theme);
             $layoutLoader = $this->getLayoutDefaultLoader($appDir, $theme);
+
             $proxy = $this->getLayoutProxy();
             $commonRenderer = $this->getCommonRenderer();
             $commonRenderer->setLayoutProxy($proxy);
@@ -278,7 +279,9 @@ class ClawsRenderer
     private function getLayoutDefaultLoader($appDir, $theme)
     {
         if (null === $this->layoutDefaultLoader) {
-            $this->layoutDefaultLoader = FileLoader::create()->addDir($appDir . "/theme/$theme/layouts");
+            $this->layoutDefaultLoader = FileLoader::create()
+                ->addDir($appDir . "/theme/$theme/layouts")
+                ->addDir($appDir . "/theme/_default_/layouts");
         }
         return $this->layoutDefaultLoader;
     }
@@ -286,7 +289,9 @@ class ClawsRenderer
     private function getWidgetDefaultLoader($appDir, $theme)
     {
         if (null === $this->widgetDefaultLoader) {
-            $this->widgetDefaultLoader = FileLoader::create()->addDir($appDir . "/theme/$theme/widgets");
+            $this->widgetDefaultLoader = FileLoader::create()
+                ->addDir($appDir . "/theme/$theme/widgets")
+                ->addDir($appDir . "/theme/_default_/widgets");
         }
         return $this->widgetDefaultLoader;
     }

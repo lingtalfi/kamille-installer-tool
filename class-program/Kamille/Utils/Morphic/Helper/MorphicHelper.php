@@ -124,7 +124,13 @@ class MorphicHelper
 
     public static function getFeedFunction($table, callable $onFeedAfter = null, array $ricMap = [])
     {
-        return self::getFeedFunctionByQuery("select * from `$table`", $onFeedAfter, $ricMap);
+        $p = explode('.', $table, 2);
+        if (2 === count($p)) {
+            $table = "`$p[0]`.`$p[1]`";
+        } else {
+            $table = "`$table`";
+        }
+        return self::getFeedFunctionByQuery("select * from $table", $onFeedAfter, $ricMap);
     }
 
     public static function getFeedFunctionByQuery($query, callable $onFeedAfter = null, array $ricMap = [])
@@ -133,7 +139,7 @@ class MorphicHelper
             if ($ricMap) {
                 $oldRic = $ric;
                 $ric = [];
-                foreach($oldRic as $col){
+                foreach ($oldRic as $col) {
                     if (array_key_exists($col, $ricMap)) {
                         $col = $ricMap[$col];
                     }
