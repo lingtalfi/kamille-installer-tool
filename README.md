@@ -125,6 +125,28 @@ The word item is defined like this:
 kamille help                                # displays this help
 kamille newapp {appName}                    # creates a kamille application with the given name in the current directory
 kamille newapp --in-place                   # creates a kamille application inside the current directory (which must be empty)
+kamille newmodule --name={moduleName}       # creates a kamille module inside the current application
+
+kamille newpage --module={moduleName} ...   # creates a kamille page in the current application
+
+    The "newpage" commands accepts all the paramers below, which you can specify in one of two ways:
+    - using the command line args
+    - creating a kit-newpage.ini file at the root of your app, those are the default values if the argument is not specified in the command line
+
+    The possible parameters are:
+
+    - module: mandatory, the module name
+    - route: default=Dummy_Route     (will be automatically prefixed with the module name)
+    - controllerModelDir: default=null, the directory where controller models are looked for
+    - controllerModel: default=Dummy, the name of the controller model to use (inside the controllerModelDir)
+    - uri: default=null, the uri of the page (if null, will be based on the route
+    - controllerDir: default=Pages, the name of the dir in which the controller file will be generated
+    - controllerString: default=null, the name of the controller; if null, some default name will be generated based on the route
+    - env: default=front (back|front), defines where to create the routes
+
+
+
+
 
 MODULES
 ==============
@@ -188,6 +210,8 @@ For instance:
 
     kamille newapp my-app
     kamille newapp --in-place
+    kamille newmodule --name=Alpha
+    kamille newpage --module=Alpha --route=My_Route
 
     kamille import Connexion
     kamille import km.Connexion
@@ -205,9 +229,9 @@ For instance:
     kamille uninstall Connexion
     kamille uninstall km.Connexion
     kamille updateall
-    kamille pack {moduleName}
+    kamille pack Connexion
 
-    
+
     kamille list
     kamille list km
     kamille listd
