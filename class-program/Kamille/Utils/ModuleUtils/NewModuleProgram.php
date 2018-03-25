@@ -12,6 +12,12 @@ class NewModuleProgram
 {
 
     protected $moduleName;
+    protected $features;
+
+    public function __construct()
+    {
+        $this->features = [];
+    }
 
 
     public static function create()
@@ -22,6 +28,13 @@ class NewModuleProgram
     public function setModuleName($moduleName)
     {
         $this->moduleName = $moduleName;
+        return $this;
+    }
+
+
+    public function addFeature(string $featureName)
+    {
+        $this->features[] = $featureName;
         return $this;
     }
 
@@ -77,6 +90,7 @@ class NewModuleProgram
             if (!file_exists($dest)) {
                 $content = $this->getTemplateContent("hooks", [
                     'moduleName' => $moduleName,
+                    'ecp' => $this->hasFeature('ecp'),
                 ]);
                 FileSystemTool::mkfile($dest, $content);
             }
@@ -128,6 +142,35 @@ class NewModuleProgram
             }
 
 
+            //--------------------------------------------
+            // FEATURES
+            //--------------------------------------------
+            if ($this->hasFeature('ecp')) {
+
+                // create service util
+                $dest = $moduleDir . "/Ecp/$moduleName" . "EcpServiceUtil.php";
+                if (!file_exists($dest)) {
+                    $content = $this->getTemplateContent("ecp", [
+                        'moduleName' => $moduleName,
+                    ]);
+                    FileSystemTool::mkfile($dest, $content);
+                }
+
+
+                // also create the ecp service in files if it doesn't exist (the files will be copied
+                // to their final destination when the module is installed (that's how the install of
+                // a kamille module works...)
+                $dest = $moduleDir . "/files/app/service/$moduleName/ecp/api.php";
+                if (!file_exists($dest)) {
+                    $content = $this->getTemplateContent("ecp-service", [
+                        'moduleName' => $moduleName,
+                    ]);
+                    FileSystemTool::mkfile($dest, $content);
+                }
+
+
+            }
+
         } else {
             $this->error("Module name not set");
         }
@@ -149,9 +192,27 @@ class NewModuleProgram
                 break;
             case "hooks":
                 $moduleName = $params['moduleName'];
+                $ecp = $params['ecp'];
+                $ecpContent = '';
+                if (true === $ecp) {
+                    $ecpContent = <<<EEE
+    protected static function ApplicationLogMonitor_Ecp_logInvalidArgumentException(\Ecp\Exception\EcpInvalidArgumentException \$e)
+    {
+
+    }
+EEE;
+
+                }
+
                 $tpl = __DIR__ . "/assets/DefaultHooks.php";
                 $content = file_get_contents($tpl);
-                return str_replace('PeiPei', $moduleName, $content);
+                return str_replace([
+                    'PeiPei',
+                    '// with-ecp',
+                ], [
+                    $moduleName,
+                    $ecpContent,
+                ], $content);
                 break;
             case "services":
                 $moduleName = $params['moduleName'];
@@ -184,6 +245,18 @@ class NewModuleProgram
                 $content = file_get_contents($tpl);
                 return str_replace('PeiPei', $moduleName, $content);
                 break;
+            case "ecp":
+                $moduleName = $params['moduleName'];
+                $tpl = __DIR__ . "/assets/Ecp/DefaultEcpServiceUtil.php";
+                $content = file_get_contents($tpl);
+                return str_replace('PeiPei', $moduleName, $content);
+                break;
+            case "ecp-service":
+                $moduleName = $params['moduleName'];
+                $tpl = __DIR__ . "/assets/files/app/service/PeiPei/ecp/api.php";
+                $content = file_get_contents($tpl);
+                return str_replace('PeiPei', $moduleName, $content);
+                break;
             default:
                 $this->error("Unknown template with type=$type");
                 break;
@@ -196,5 +269,10 @@ class NewModuleProgram
     private function error($msg)
     {
         throw new ModuleUtilsException($msg);
+    }
+
+    private function hasFeature(string $featureName): bool
+    {
+        return (in_array($featureName, $this->features, true));
     }
 }

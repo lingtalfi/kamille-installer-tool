@@ -89,7 +89,14 @@ class KamilleApplicationItemManagerProgram extends ApplicationItemManagerProgram
                 }
                 try {
 
-                    NewModuleProgram::create()->setModuleName($module)->execute();
+
+                    $moduleProgram = NewModuleProgram::create()->setModuleName($module);
+                    if (true === $input->getFlagValue("with-ecp")) { // --with-ecp
+                        $moduleProgram->addFeature('ecp');
+                    }
+                    $moduleProgram->execute();
+
+
                     $output->success("Ok");
                     $output->info("Now you might want to install the module (kamille install $module)");
                 } catch (\Exception $e) {
