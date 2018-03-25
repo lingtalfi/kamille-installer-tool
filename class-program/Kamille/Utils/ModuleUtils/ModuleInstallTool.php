@@ -511,14 +511,14 @@ class ModuleInstallTool
 
 
                 $sectionLineNumber = ClassCookerHelper::getSectionLineNumber("Module $module", $xHooksFile);
+                $methodBoundaries = ClassCookerHelper::getMethodsBoundaries($xHooksFile);
                 if (false === $sectionLineNumber) {
                     // section line number not found? find one
                     // we find the range in which we can potentially insert our new section
                     $rangeStart = null;
                     $rangeEnd = null;
-                    $methodBoundaries = ClassCookerHelper::getMethodsBoundaries($xHooksFile);
-                    foreach ($methodBoundaries as $method => $methodRange) {
-                        $res = strcasecmp($method, $module);
+                    foreach ($methodBoundaries as $_method => $methodRange) {
+                        $res = strcasecmp($_method, $module);
                         if ($res < 0) {
                             $rangeStart = $methodRange[1] + 1;
                         } elseif ($res > 0) {
@@ -539,11 +539,14 @@ class ModuleInstallTool
                     FileTool::insert($rangeStart, PHP_EOL . $section . PHP_EOL, $xHooksFile);
                 }
 
-                // now section line number should exist
-                $sectionLineNumber = ClassCookerHelper::getSectionLineNumber("Module $module", $xHooksFile);
-                $lineInsertNumber = $sectionLineNumber + 3;
-                FileTool::insert($lineInsertNumber, $methodContent. PHP_EOL, $xHooksFile);
 
+                // now section line number should exist
+                if (false === array_key_exists($method, $methodBoundaries)) {
+
+                    $sectionLineNumber = ClassCookerHelper::getSectionLineNumber("Module $module", $xHooksFile);
+                    $lineInsertNumber = $sectionLineNumber + 3;
+                    FileTool::insert($lineInsertNumber, $methodContent . PHP_EOL, $xHooksFile);
+                }
 
 
             } else {
