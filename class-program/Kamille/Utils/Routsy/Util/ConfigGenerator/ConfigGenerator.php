@@ -6,6 +6,7 @@ namespace Kamille\Utils\Routsy\Util\ConfigGenerator;
 
 use Bat\FileSystemTool;
 use Bat\FileTool;
+use ClassCooker\Helper\ClassCookerHelper;
 use DirScanner\YorgDirScannerTool;
 use Kamille\Utils\ModuleInstallationRegister\ModuleInstallationRegister;
 use Kamille\Utils\Routsy\Util\ConfigGenerator\Exception\ConfigGeneratorException;
@@ -97,7 +98,6 @@ EEE;
                 }
 
                 $lineNumber += 3; // sections are comments on 3 lines...
-
                 FileTool::insert($lineNumber, $routeContent . PHP_EOL, $routsyFile);
             } else {
                 throw new \Exception("route already exists with id $routeId");
@@ -168,25 +168,12 @@ EEE;
     //--------------------------------------------
     private static function getSectionLineNumber($section, $file)
     {
-        $lines = file($file);
+        $n = ClassCookerHelper::getSectionLineNumber($section, $file);
+        if (false === $n) {
 
-
-        $patternLine = '!//--------------------------------------------!';
-        $pattern2 = '!//\s*' . $section . '!';
-        $n = 1;
-        $match1 = false;
-        $match2 = false;
-        foreach ($lines as $line) {
-            if (false === $match1 && preg_match($patternLine, $line)) {
-                $match1 = true;
-            } elseif (true === $match1 && false === $match2 && preg_match($pattern2, $line)) {
-                $match2 = true;
-            } elseif (true === $match1 && true === $match2 && preg_match($patternLine, $line)) {
-                return $n - 2;
-            }
-            $n++;
+            throw new ConfigGeneratorException("section not found $section");
         }
-        throw new ConfigGeneratorException("section not found $section");
+        return $n;
     }
 
 

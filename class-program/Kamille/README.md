@@ -166,6 +166,14 @@ echo HtmlLayout::create()
 History Log
 ===============
     
+- 1.130.0 -- 2018-03-25
+
+    - ModuleInstallTool::bindModuleHooks now organizes hooks in sections (every module owns its own section) rather than putting all at the bottom
+    
+- 1.129.0 -- 2018-03-25
+
+    - ModuleInstallTool::addInModuleTxt now creates an alphabetically ordered modules.txt file
+    
 - 1.128.0 -- 2018-03-25
 
     - enhance NewModuleProgram, now handles the --with-ecp feature

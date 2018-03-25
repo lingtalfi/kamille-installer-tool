@@ -8,8 +8,10 @@ use ApplicationItemManager\ApplicationItemManagerInterface;
 use ArrayToString\ArrayToStringTool;
 use Authenticate\Util\ProfileMergeTool;
 use Bat\FileSystemTool;
+use Bat\FileTool;
 use Bat\LocalHostTool;
 use ClassCooker\ClassCooker;
+use ClassCooker\Helper\ClassCookerHelper;
 use CopyDir\SimpleCopyDirUtil;
 use DirScanner\DirScanner;
 use Kamille\Architecture\ApplicationParameters\ApplicationParameters;
@@ -65,7 +67,7 @@ class ModuleInstallTool
                     $cmd .= ' --output-type-web';
                 }
                 $cmd .= ' import ' . $planet;
-                $cmd .= '; ' . $escapedProgram . ' clean'; // make sure we don't have embedded .git files (which can mess up with the user organization)
+//                $cmd .= '; ' . $escapedProgram . ' clean'; // make sure we don't have embedded .git files (which can mess up with the user organization)
 
                 /**
                  * Then here a question arise: do we use uni tolink command ?
@@ -310,20 +312,10 @@ class ModuleInstallTool
 
         $moduleTxtFile = $appDir . "/modules.txt";
         if (file_exists($moduleTxtFile)) {
-            $recreated = []; // we always ensure that the format is exactly how we want it: without ending spaces after module names...
-            $lines = file($moduleTxtFile, \FILE_IGNORE_NEW_LINES);
-            $found = false;
-            foreach ($lines as $l) {
-                $curModuleName = trim($l);
-                if ($moduleName === $curModuleName) {
-                    $found = true;
-                }
-                $recreated[] = $curModuleName;
-            }
-            if (false === $found) {
-                $recreated[] = $moduleName;
-            }
-            $content = implode(PHP_EOL, $recreated);
+            $lines = file($moduleTxtFile, \FILE_IGNORE_NEW_LINES | \FILE_SKIP_EMPTY_LINES);
+            $lines[] = $moduleName;
+            sort($lines);
+            $content = implode(PHP_EOL, $lines);
 
         } else {
             $content = $moduleName . PHP_EOL;
@@ -468,6 +460,7 @@ class ModuleInstallTool
         //--------------------------------------------
         // FIRST, CREATE THE PROVIDERS AND BIND OTHER MODULES TO IT
         //--------------------------------------------
+
         foreach ($providerMethods as $method) {
 
 
@@ -515,7 +508,42 @@ class ModuleInstallTool
                 }
                 $newInnerContent .= implode(PHP_EOL, $innerContents);
                 $methodContent = "\t" . $signature . PHP_EOL . "\t{" . PHP_EOL . $newInnerContent . "\t}" . PHP_EOL;
-                $hookCooker->addMethod($method, $methodContent);
+
+
+                $sectionLineNumber = ClassCookerHelper::getSectionLineNumber("Module $module", $xHooksFile);
+                if (false === $sectionLineNumber) {
+                    // section line number not found? find one
+                    // we find the range in which we can potentially insert our new section
+                    $rangeStart = null;
+                    $rangeEnd = null;
+                    $methodBoundaries = ClassCookerHelper::getMethodsBoundaries($xHooksFile);
+                    foreach ($methodBoundaries as $method => $methodRange) {
+                        $res = strcasecmp($method, $module);
+                        if ($res < 0) {
+                            $rangeStart = $methodRange[1] + 1;
+                        } elseif ($res > 0) {
+                            $rangeEnd = $methodRange[0] - 1;
+                            break;
+                        }
+                    }
+                    if (null === $rangeStart) {
+                        $rangeStart = 1;
+                    }
+                    if (null === $rangeEnd) {
+                        $rangeEnd = FileTool::getNbLines($xHooksFile);
+                    }
+
+                    // assuming section have at least one blank line above them,
+                    // it means that we can take the previous method's end line +1 as our insert point
+                    $section = ClassCookerHelper::createSectionComment("Module $module");
+                    FileTool::insert($rangeStart, PHP_EOL . $section . PHP_EOL, $xHooksFile);
+                }
+
+                // now section line number should exist
+                $sectionLineNumber = ClassCookerHelper::getSectionLineNumber("Module $module", $xHooksFile);
+                $lineInsertNumber = $sectionLineNumber + 3;
+                FileTool::insert($lineInsertNumber, $methodContent. PHP_EOL, $xHooksFile);
+
 
 
             } else {
