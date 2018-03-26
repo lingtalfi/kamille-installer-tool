@@ -127,6 +127,22 @@ kamille newapp {appName}                    # creates a kamille application with
 kamille newapp --in-place                   # creates a kamille application inside the current directory (which must be empty)
 kamille newmodule --name={moduleName}       # creates a kamille module inside the current application
 
+    The following options are available:
+    - morphicPrefix: default:null, defines the morphic prefix to use in conjunction with the --with-morphic option
+    - morphicDatabase: default:null, defines the database to use in conjunction with the --with-morphic option.
+                    If none is set, morphic will take the default database.
+
+
+    Then we have optional features that you add with the --with-{featureName} parameters.
+    The available options are the following:
+
+    - --with-ecp: creates an ecp eco-system for your module
+    - --with-morphic: prepares the morphic translation files for LingFrenchMorphic2Generator.
+                        You also need to define the prefix using the --morphicPrefix option.
+                        Optionally, you can also define the database with --morphicDatabase
+
+
+
 kamille newpage --module={moduleName} ...   # creates a kamille page in the current application
 
     The "newpage" commands accepts all the paramers below, which you can specify in one of two ways:
@@ -143,18 +159,7 @@ kamille newpage --module={moduleName} ...   # creates a kamille page in the curr
     - controllerDir: default=Pages, the name of the dir in which the controller file will be generated
     - controllerString: default=null, the name of the controller; if null, some default name will be generated based on the route
     - env: default=front (back|front), defines where to create the routes
-    - morphicPrefix: default:null, defines the morphic prefix to use in conjunction with the --with-morphic option
-    - morphicDatabase: default:null, defines the database to use in conjunction with the --with-morphic option.
-                    If none is set, morphic will take the default database.
 
-
-    Then we have optional features that you add with the --with-{featureName} parameters.
-    The available options are the following:
-
-    - --with-ecp: creates an ecp eco-system for your module
-    - --with-morphic: prepares the morphic translation files for LingFrenchMorphic2Generator.
-                        You also need to define the prefix using the --morphicPrefix option.
-                        Optionally, you can also define the database with --morphicDatabase
 
 
 
