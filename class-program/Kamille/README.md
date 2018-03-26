@@ -166,6 +166,10 @@ echo HtmlLayout::create()
 History Log
 ===============
     
+- 1.131.0 -- 2018-03-26
+
+    - enhance NewModuleProgram, now handles the --with-morphic feature
+    
 - 1.130.0 -- 2018-03-25
 
     - ModuleInstallTool::bindModuleHooks now organizes hooks in sections (every module owns its own section) rather than putting all at the bottom

@@ -7,16 +7,21 @@ namespace Kamille\Utils\ModuleUtils;
 use Bat\FileSystemTool;
 use Kamille\Architecture\ApplicationParameters\ApplicationParameters;
 use Kamille\Utils\ModuleUtils\Exception\ModuleUtilsException;
+use Kamille\Utils\Morphic\Generator2\Helper\LingFrenchMorphicGeneratorHelper;
+use Komin\Component\Db\QuickPdo\QuickPdo;
+use QuickPdo\QuickPdoInfoTool;
 
 class NewModuleProgram
 {
 
     protected $moduleName;
     protected $features;
+    protected $params;
 
     public function __construct()
     {
         $this->features = [];
+        $this->params = [];
     }
 
 
@@ -28,6 +33,12 @@ class NewModuleProgram
     public function setModuleName($moduleName)
     {
         $this->moduleName = $moduleName;
+        return $this;
+    }
+
+    public function addParam($name, $value)
+    {
+        $this->params[$name] = $value;
         return $this;
     }
 
@@ -167,7 +178,33 @@ class NewModuleProgram
                     ]);
                     FileSystemTool::mkfile($dest, $content);
                 }
+            }
 
+            if ($this->hasFeature('morphic')) {
+
+                // create service util
+                $morphicPrefix = $this->getParam('morphicPrefix');
+                $morphicDatabase = $this->params['morphicDatabase'] ?? null;
+
+                $colTranslationFile = $moduleDir . "/assets/morphic/fra/$morphicPrefix-morphic-cols.xml";
+                if (!file_exists($colTranslationFile)) {
+                    $content = $this->getTemplateContent("morphic-cols", [
+                        'moduleName' => $moduleName,
+                        'prefix' => $morphicPrefix,
+                        'db' => $morphicDatabase,
+                    ]);
+                    FileSystemTool::mkfile($colTranslationFile, $content);
+                }
+
+                $tableTranslationFile = $moduleDir . "/assets/morphic/fra/$morphicPrefix-morphic-tables.xml";
+                if (!file_exists($tableTranslationFile)) {
+                    $content = $this->getTemplateContent("morphic-tables", [
+                        'moduleName' => $moduleName,
+                        'prefix' => $morphicPrefix,
+                        'db' => $morphicDatabase,
+                    ]);
+                    FileSystemTool::mkfile($tableTranslationFile, $content);
+                }
 
             }
 
@@ -257,6 +294,20 @@ EEE;
                 $content = file_get_contents($tpl);
                 return str_replace('PeiPei', $moduleName, $content);
                 break;
+            case "morphic-cols":
+                $prefix = $params['prefix'];
+                $db = $params['db'];
+                ob_start();
+                LingFrenchMorphicGeneratorHelper::dumpColsBluePrint($prefix, $db);
+                return ob_get_clean();
+                break;
+            case "morphic-tables":
+                $prefix = $params['prefix'];
+                $db = $params['db'];
+                ob_start();
+                LingFrenchMorphicGeneratorHelper::dumpTableBluePrint($prefix, $db);
+                return ob_get_clean();
+                break;
             default:
                 $this->error("Unknown template with type=$type");
                 break;
@@ -274,5 +325,14 @@ EEE;
     private function hasFeature(string $featureName): bool
     {
         return (in_array($featureName, $this->features, true));
+    }
+
+
+    private function getParam($name)
+    {
+        if (array_key_exists($name, $this->params)) {
+            return $this->params[$name];
+        }
+        $this->error("Logic error: param not set: $name");
     }
 }

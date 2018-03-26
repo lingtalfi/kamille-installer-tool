@@ -99,7 +99,9 @@ if (false === $inPlace) {
 $output = ProgramOutput::create();
 
 
-
+if (class_exists("\Core\Services\A")) {
+    \Core\Services\A::quickPdoInit();
+}
 
 
 $widgetManager = LingApplicationItemManager::create()

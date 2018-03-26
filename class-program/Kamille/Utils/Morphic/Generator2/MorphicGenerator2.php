@@ -186,7 +186,6 @@ class MorphicGenerator2 implements MorphicGenerator2Interface
             ];
         }
 
-
         return [
             "db" => $db,
             "table" => $table,
@@ -312,6 +311,21 @@ EEE;
         return $table2Aliases;
     }
 
+
+    protected function _getTablePrefix($table)
+    {
+        $tablesWithoutPrefix = $this->getConfiguration("tablesWithoutPrefix", []);
+
+        $prefix = "";
+        if (!in_array($table, $tablesWithoutPrefix, true)) {
+            $q = explode('_', $table, 2);
+            if (count($q) > 1) {
+                $prefix = array_shift($q) . "_";
+            }
+        }
+        return $prefix;
+    }
+
     /**
      * @param array $tableInfo
      * @return array
@@ -349,6 +363,9 @@ EEE;
                 $pivotTableInfo = $this->db2TableInfo[$item[0]][$item[1]];
                 $labelPlural = $pivotTableInfo['labelPlural'];
 
+                if ('cities' === $labelPlural) {
+                    az($pivotTableInfo, __FILE__);
+                }
                 $args = '';
                 $ric2val = $item[2];
 
@@ -364,7 +381,7 @@ EEE;
 
                 $sItems .= '
                 [
-                    "link" => E::link("' . $route . '") . "?s&' . $args . '",
+                    "link" => A::link("' . $route . '") . "?s&' . $args . '",
                     "text" => "Voir les ' . str_replace('"', '\"', $labelPlural) . '",
                     "disabled" => !$isUpdate,
                 ],
@@ -567,7 +584,7 @@ EEE;
             foreach ($cols as $col) {
 
 
-                $label = $this->identifierToLabel($col, $table);
+                $label = $this->identifierToLabel($col, $table, $tableInfo);
 
                 $type = $columnTypes[$col];
                 $typePrecision = $columnTypesPrecision[$col];
@@ -841,7 +858,7 @@ EEE;
         return <<<EEE
 <?php 
 
-        
+use Core\Services\A;        
 use Bat\SessionTool;        
 use QuickPdo\QuickPdo;
 use Kamille\Utils\Morphic\Helper\MorphicHelper;
@@ -958,7 +975,7 @@ EEE;
         foreach ($cols as $col) {
 
             if (false === strpos($columnTypes[$col], 'blob')) {
-                $label = $this->identifierToLabel($col, $table);
+                $label = $this->identifierToLabel($col, $table, $tableInfo);
                 $headers[$col] = $label;
                 $qCols[] = 'h.' . $col;
             }
@@ -1082,7 +1099,7 @@ EEE;
     }
 
 
-    protected function identifierToLabel($identifier, $table)
+    protected function identifierToLabel($identifier, $table, array $tableInfo)
     {
         return ucfirst(str_replace('_', ' ', $identifier));
     }
@@ -1111,6 +1128,7 @@ EEE;
         $a['labelPlural'] = $labelPlural;
         $a['camel'] = $this->getCamelByTable($tableBasicInfo['table']);
         $a['route'] = $this->getTableRouteByTable($a['table']);
+        $a["prefix"] = $this->_getTablePrefix($a["table"]);
         $this->decorateTableInfo($a);
         return $a;
     }

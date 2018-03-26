@@ -143,7 +143,7 @@ EEE
             //--------------------------------------------
             $path = 'Controller\\' . $this->moduleName . '\\Back\\Generated\\' . $tableInfo['camel'] . '\\' . $tableInfo['camel'] . 'ListController';
             $route->addBodyStatement(<<<EEE
-\$routes["$tableInfo[route]"] = ["/morphic/generated/$tableInfo[table]/list", null, null, "$path:render"];
+\$routes["$tableInfo[route]"] = ["/morphic-$this->moduleName/generated/$tableInfo[table]/list", null, null, "$path:render"];
 EEE
             );
         }

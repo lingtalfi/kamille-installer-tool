@@ -34,6 +34,19 @@ kamille newpage --module={moduleName} ...   # creates a kamille page in the curr
     - controllerDir: default=Pages, the name of the dir in which the controller file will be generated
     - controllerString: default=null, the name of the controller; if null, some default name will be generated based on the route
     - env: default=front (back|front), defines where to create the routes
+    - morphicPrefix: default:null, defines the morphic prefix to use in conjunction with the --with-morphic option
+    - morphicDatabase: default:null, defines the database to use in conjunction with the --with-morphic option.
+                    If none is set, morphic will take the default database.
+
+
+    Then we have optional features that you add with the --with-{featureName} parameters.
+    The available options are the following:
+
+    - --with-ecp: creates an ecp eco-system for your module
+    - --with-morphic: prepares the morphic translation files for LingFrenchMorphic2Generator.
+                        You also need to define the prefix using the --morphicPrefix option.
+                        Optionally, you can also define the database with --morphicDatabase
+
 
 
 

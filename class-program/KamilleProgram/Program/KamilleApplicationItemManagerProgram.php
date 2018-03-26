@@ -94,6 +94,17 @@ class KamilleApplicationItemManagerProgram extends ApplicationItemManagerProgram
                     if (true === $input->getFlagValue("with-ecp")) { // --with-ecp
                         $moduleProgram->addFeature('ecp');
                     }
+                    if (true === $input->getFlagValue("with-morphic")) { // --with-morphic
+                        $morphicPrefix = $input->getOptionValue("morphicPrefix");
+                        if (null === $morphicPrefix) {
+                            $output->error("Logic error: you need to set the morphicPrefix option if you enable the --with-morphic flag");
+                            return;
+                        }
+                        $moduleProgram->addParam('morphicPrefix', $morphicPrefix);
+                        $moduleProgram->addParam('morphicDatabase', $input->getOptionValue("morphicDatabase"));
+                        $moduleProgram->addFeature('morphic');
+                    }
+
                     $moduleProgram->execute();
 
 
