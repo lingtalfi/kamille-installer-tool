@@ -963,6 +963,7 @@ EEE;
 
         $viewId = $tableInfo["table"];
         $table = $tableInfo["table"];
+        $originalTable = $table;
         $cols = $tableInfo["columns"];
         $columnTypes = $tableInfo["columnTypes"];
         $fks = $tableInfo["fks"];
@@ -999,7 +1000,15 @@ EEE;
             $name = $this->getNameByTable($table);
             $label = ucfirst($this->db2TableInfo[$db][$table]['label']);
 
-            $headers[$name] = $label;
+
+            /**
+             * Subclass like LingFrenchMorphicGenerator2 has already inserted an appropriate translation
+             * of the column here, so we don't want to override it with our "cheap" label.
+             */
+            if (false === array_key_exists($name, $headers)) {
+                $headers[$name] = $label;
+            }
+
             $rcMap[$name] = [];
             $c = 0;
             foreach ($ric as $col) {
@@ -1021,7 +1030,6 @@ EEE;
         foreach ($fks as $col => $info) {
             $headersVis[$col] = false;
         }
-
 
         $sHeaders = ArrayToStringTool::toPhpArray($headers, null, 4);
         $sHeadersVis = ArrayToStringTool::toPhpArray($headersVis, null, 4);

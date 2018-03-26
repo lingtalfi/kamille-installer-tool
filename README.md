@@ -143,7 +143,8 @@ kamille newmodule --name={moduleName}       # creates a kamille module inside th
 
 
 
-kamille newpage --module={moduleName} ...   # creates a kamille page in the current application
+kamille newpage --module={moduleName} --uri={uri} --route={route} --controller={controller}   # creates a kamille page in the current application
+
 
     The "newpage" commands accepts all the paramers below, which you can specify in one of two ways:
     - using the command line args
@@ -151,14 +152,13 @@ kamille newpage --module={moduleName} ...   # creates a kamille page in the curr
 
     The possible parameters are:
 
-    - module: mandatory, the module name
-    - route: default=Dummy_Route     (will be automatically prefixed with the module name)
-    - controllerModelDir: default=null, the directory where controller models are looked for
-    - controllerModel: default=Dummy, the name of the controller model to use (inside the controllerModelDir)
-    - uri: default=null, the uri of the page (if null, will be based on the route
-    - controllerDir: default=Pages, the name of the dir in which the controller file will be generated
-    - controllerString: default=null, the name of the controller; if null, some default name will be generated based on the route
-    - env: default=front (back|front), defines where to create the routes
+     - module: mandatory, the module name
+     - route: mandatory, the route
+     - uri: mandatory, the uri of the page (if null, will be based on the route)
+     - controller: mandatory, the name of the controller
+     - controllerModelDir: default=null, the directory where controller models are looked for
+     - controllerModel: default=Dummy, the name of the controller model to use (inside the controllerModelDir)
+     - env: default=front (back|front), defines where to create the routes
 
 
 

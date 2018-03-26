@@ -124,40 +124,42 @@ class KamilleApplicationItemManagerProgram extends ApplicationItemManagerProgram
                     $conf = parse_ini_file($confFile);
                     /**
                      * - module: mandatory, the module name
-                     * - route: default=Dummy_Route     (will be automatically prefixed with the module name)
+                     * - route: mandatory, the route
+                     * - uri: mandatory, the uri of the page (if null, will be based on the route)
+                     * - controller: mandatory, the name of the controller
+                     *
                      * - controllerModelDir: default=null, the directory where controller models are looked for
                      * - controllerModel: default=Dummy, the name of the controller model to use (inside the controllerModelDir)
-                     * - uri: default=null, the uri of the page (if null, will be based on the route
-                     * - controllerDir: default=Pages, the name of the dir in which the controller file will be generated
-                     * - controllerString: default=null, the name of the controller; if null, some default name will be generated based on the route
                      * - env: default=front (back|front), defines where to create the routes
                      */
                 }
 
                 $module = $input->getOptionValue("module", $conf['module'] ?? null);
+                $route = $input->getOptionValue("route", $conf['route'] ?? null);
+                $uri = $input->getOptionValue("uri", $conf['uri'] ?? null);
+                $controller = $input->getOptionValue("controller", $conf['controller'] ?? null);
 
-                if ($module) {
+                if ($module && $route && $uri && $controller) {
 
 
-                    $routeId = $input->getOptionValue("route", $conf['route'] ?? "Dummy_Route"); // note: the module will be prefixed to it...
+
                     $controllerModelDir = $input->getOptionValue("controllerModelDir", $conf['controllerModelDir'] ?? null);
                     $controllerModel = $input->getOptionValue("controllerModel", $conf['controllerModel'] ?? "Dummy");
-                    $uri = $input->getOptionValue("uri", $conf['uri'] ?? null);
                     $env = $input->getOptionValue("env", $conf['env'] ?? "front");
-                    $controllerString = $input->getOptionValue("controllerString", $conf['controllerString'] ?? null);
-                    $controllerDir = $input->getOptionValue("controllerDir", $conf['controllerDir'] ?? "Pages");
+
+
+
 
                     //--------------------------------------------
                     // NEW PAGE
                     //--------------------------------------------
                     $ret = PageCreatorProgram::create()
                         ->setModule($module)
-                        ->setRouteId($routeId)
+                        ->setRouteId($route)
                         ->setControllerModelDir($controllerModelDir)
                         ->setControllerModel($controllerModel)
                         ->setUrl($uri)
-                        ->setControllerString($controllerString)
-                        ->setControllerDir($controllerDir)
+                        ->setControllerString($controller)
                         ->setEnv($env)
                         ->execute();
 
@@ -167,7 +169,7 @@ class KamilleApplicationItemManagerProgram extends ApplicationItemManagerProgram
                     }
 
                 } else {
-                    $output->error("The module is not defined");
+                    $output->error("One of the following parameter is not defined: module, route, uri, controller");
                 }
 
             })

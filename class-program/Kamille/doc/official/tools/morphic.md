@@ -244,8 +244,8 @@ d'une base de données.
 Cet outil analyse la structure de la base de données et construit une administration de bas niveau en quelques secondes.
 Le gain de temps est énorme :)
 
-Voici le code qui a été utilisé pour générer [administration générée](http://www.ling-docs.ovh/ekom/#/user/back/generated-admin)
-du module [Ekom](https://github.com/KamilleModules/Ekom): 
+Pour le recréer, placez le code suivant dans un fichier de votre choix (qui s'appellera morphic-generator.php 
+dans la suite de ce tuto)
  
 
 
@@ -254,10 +254,9 @@ du module [Ekom](https://github.com/KamilleModules/Ekom):
 <?php
 
 
+use CommandLineInput\CommandLineInput;
 use Core\Services\A;
-use Kamille\Architecture\ApplicationParameters\ApplicationParameters;
-use Module\Ekom\Morphic\Generator\EkomNullosMorphicGenerator2;
-use QuickPdo\QuickPdoInfoTool;
+use Module\ApplicationMorphicGenerator\Api\Util\MorphicGenerator2Wrapper;
 
 // using kamille framework here (https://github.com/lingtalfi/kamille)
 require_once __DIR__ . "/../boot.php";
@@ -266,56 +265,69 @@ require_once __DIR__ . "/../init.php";
 
 A::testInit();
 
-$app = ApplicationParameters::get("app_dir");
 
-$conf = [
-    'tablesWithoutPrefix' => [
-        "nested_category",
-    ],
-    'formControlTypes' => [
-        /**
-         * autocomplete: in ecp.api.php, search for "auto."...
-         */
-        "autocomplete" => [
-            'ek_' => [
-                "address_id" => true,
-                "category_id" => true,
-                "discount_id" => true,
-                "product_id" => true,
-                "product_card_id" => true,
-                "tag_id" => true,
-                "user_id" => true,
-            ],
-        ],
-    ],
-];
+$regenerate = false;
+$mode = "block";
+if (isset($argv)) {
+    $input = CommandLineInput::create($argv);
+    $input->setAcceptNotRegistered(true);
+    $regenerate = $input->getFlagValue("r", false);
+    $multi = $input->getFlagValue("m", false);
+    if ($multi) {
+        $mode = "multi_modules";
+    }
 
 
-$allTables = QuickPdoInfoTool::getTables("kamille", null);
-$tables = ["ek_user"];
-$tables = ["TABLE 69"];
-$tables = ["nested_category"];
-$tables = ["ek_shop_has_product_has_provider"];
-$tables = ["ekev_event_has_course"];
-$tables = ["ek_shop_has_product"];
-$tables = ["di_user_has_element"];
-$tables = ["ek_user_has_product"];
-$tables = $allTables;
+}
 
 
-$morphic = EkomNullosMorphicGenerator2::create()
-    ->debug(true)
-//    ->recreateCache(true)
-    ->setConfiguration($conf)
-    ->setControllerBaseDir($app . "/class-controllers/Ekom/Back/Generated")
-    ->setListConfigFileBaseDir($app . "/config/morphic/Ekom/generated")
-    ->setFormConfigFileBaseDir($app . "/config/morphic/Ekom/generated")
-    ->setTables($tables);
 
-$morphic->generate();
-
+MorphicGenerator2Wrapper::generate([
+    "generator_mode" => $mode,
+    "regenerate_cache" => $regenerate,
+]);
 
 
 ```
 
+
+Maintenant, créez un alias dans votre `.bashrc`:
+
+```bash
+alias morphic='php -f "/path/to/morphic-generator.php" --'
+```
+
+Et voilà, il ne vous reste plus qu'à appeler votre outil en ligne de commandes:
+
+
+Générer l'admin
+```bash
+morphic 
+```
+
+
+Les options sont les suivantes:
+
+- r: regénère le cache. Utilisez cette option si vous venez de modifier la structure de la base de données depuis la dernière fois 
+- m: déclenche le mode multi_modules (dans lequel les fichiers sont organisés par modules plutôt que dans un seul module);
+            Note: le code utilise le module ApplicationMorphicGenerator qui doit donc être installé pour que ce programme fonctionne.
+            La configuration du générateur se fait depuis la configuration du module (`config/ApplicationMorphicGenerator.conf`) 
+
+
+```bash
+morphic
+
+# ou bien 
+morphic -r
+
+# ou bien 
+morphic -m
+
+# ou bien 
+morphic -rm 
+
+ 
+```
+
+    
     

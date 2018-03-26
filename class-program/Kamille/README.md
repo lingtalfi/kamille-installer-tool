@@ -166,6 +166,10 @@ echo HtmlLayout::create()
 History Log
 ===============
     
+- 1.132.0 -- 2018-03-26
+
+    - update PageCreatorProgram, now following parameters are required (to make the api more intuitive): module, route, uri, controller
+    
 - 1.131.0 -- 2018-03-26
 
     - enhance NewModuleProgram, now handles the --with-morphic feature

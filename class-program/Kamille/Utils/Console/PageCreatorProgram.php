@@ -17,10 +17,9 @@ class PageCreatorProgram
     protected $routeId;
     protected $url;
     protected $controllerString;
-    protected $controllerModel;
     //
-    protected $controllerDir;
     protected $controllerModelDir;
+    protected $controllerModel;
     protected $env;
     protected $appDir;
 
@@ -31,8 +30,10 @@ class PageCreatorProgram
         $this->routeId = "my_route";
         $this->url = null;
         $this->controllerString = null;
+
+
+
         $this->controllerModel = "Dummy"; // look in assets directory
-        $this->controllerDir = "Pages";
         $this->controllerModelDir = null;
         $this->env = "front";
     }
@@ -46,97 +47,91 @@ class PageCreatorProgram
     public function execute()
     {
         $module = $this->module;
-        $env = $this->env;
-        if ('front' === $env) {
-            $env = "routes";
-        }
         $routeId = $this->routeId;
         $url = $this->url;
         $controllerString = $this->controllerString;
-        $controllerDir = $this->controllerDir;
-        $controllerModel = $this->controllerModel;
-        $controllerModelDir = $this->controllerModelDir;
-        $appDir = ApplicationParameters::get("app_dir");
 
 
-        //--------------------------------------------
-        // CREATE ROUTE
-        //--------------------------------------------
-        // resolve automatic guesses
-        if (null === $url) {
-            $url = "/" . strtolower($controllerDir) . "/" . str_replace('_', '-', strtolower($module . "_" . $routeId));
-        }
-        if (null === $module) {
-            $module = "ThisApp";
-        }
-        if (null === $controllerModelDir) {
-            $controllerModelDir = __DIR__ . '/assets';
-        }
-        $controllerModelDir = str_replace('[app]', $appDir, $controllerModelDir);
-
-        $controllerPath = "\Controller\\$module";
-
-        if (null === $controllerString) {
-            $controllerName = CaseTool::snakeToFlexiblePascal($routeId);
-            $controllerString = "$controllerName:render";
-        }
+        if ($module && $routeId && $url && $controllerString) {
 
 
-        if (0 !== strpos($controllerString, ":")) { // relative path
-            $controllerPath .= "\\$controllerDir";
+            $controllerModel = $this->controllerModel;
+            $controllerModelDir = $this->controllerModelDir;
+            $env = $this->env;
+            if ('front' === $env) {
+                $env = "routes";
+            }
+            $appDir = ApplicationParameters::get("app_dir");
+
+
+            //--------------------------------------------
+            // CREATE ROUTE
+            //--------------------------------------------
+            if (null === $controllerModelDir) {
+                $controllerModelDir = __DIR__ . '/assets';
+            }
+            $controllerModelDir = str_replace('[app]', $appDir, $controllerModelDir);
+
+
+            // first, insert a route
+            $routeContent = '$routes["' . $routeId . '"] = ["' . $url . '", null, null, \'' . $controllerString . '\'];';
+            $routsyFile = $appDir . "/config/routsy/$env.php";
+            $section = "Module $module"; //
+            ConfigGenerator::addSectionIfNotExist($routsyFile, $section, "MODULES");
+            ConfigGenerator::addRouteToRoutsyFile($routeId, $routeContent, $routsyFile, $section);
+
+
+            //--------------------------------------------
+            // CREATE CONTROLLER
+            //--------------------------------------------
+            $p = explode(':', $controllerString, 2);
+            $controllerNamespaceClass = ltrim($p[0], '\\');
+
+
+            // namespace and className
+            $controllerNamespaceParent = $controllerNamespaceClass;
+            $q = explode('\\', $controllerNamespaceParent);
+            $className = array_pop($q);
+            $controllerNamespaceParent = implode('\\', $q);
+
+
+
+
+            // path to the controller file
+            array_shift($q); // remove the Controller prefix
+            $pathPart = implode('/', $q);
+            $controllerFile = $appDir . "/class-controllers/$pathPart/" . $className . ".php";
+
+
+
+            $controllerModelFile = $controllerModelDir . "/$controllerModel" . "ControllerModel.tpl.php";
+
+
+            if (file_exists($controllerModelFile)) {
+                $content = file_get_contents($controllerModelFile);
+                $content = str_replace([
+                    '_controllerNamespace_',
+                    '_controllerClassname_',
+                ], [
+                    $controllerNamespaceParent,
+                    $className,
+                ], $content);
+
+                FileSystemTool::mkfile($controllerFile, $content);
+            } else {
+                $this->error("controller model not found: $controllerModelFile");
+            }
+
+
+            return [
+                "routeId" => $routeId,
+                "url" => $url,
+                "controllerFile" => $controllerFile,
+                "routsyFile" => $routsyFile,
+            ];
         } else {
-            $controllerString = ltrim($controllerString, ':');
+            $this->error("One of the following variable is not set: module, route, uri, controller");
         }
-        $controllerPath .= "\\$controllerString";
-
-
-        $routeId = $module . "_" . $routeId;
-
-        // first, insert a route
-        $routeContent = '$routes["' . $routeId . '"] = ["' . $url . '", null, null, \'' . $controllerPath . '\'];';
-        $routsyFile = $appDir . "/config/routsy/$env.php";
-        $section = "Module $module"; //
-        ConfigGenerator::addSectionIfNotExist($routsyFile, $section, "MODULES");
-        ConfigGenerator::addRouteToRoutsyFile($routeId, $routeContent, $routsyFile, $section);
-
-
-        //--------------------------------------------
-        // CREATE CONTROLLER
-        //--------------------------------------------
-        $p = explode(':', $controllerPath);
-        $controllerNamespaceClass = $p[0];
-        $controllerNamespaceClass = ltrim($controllerNamespaceClass, '\\');
-        $p = explode('\\', $controllerNamespaceClass);
-        $q = $p;
-        array_shift($q); // remove Controller prefix
-        $path = implode('\\', $q);
-        $className = array_pop($p);
-        $controllerNamespaceParent = implode('\\', $p);
-
-        $controllerFile = $appDir . "/class-controllers/" . str_replace('\\', '/', $path) . '.php';
-        $controllerModelFile = $controllerModelDir . "/$controllerModel" . "ControllerModel.tpl.php";
-        if (file_exists($controllerModelFile)) {
-            $content = file_get_contents($controllerModelFile);
-            $content = str_replace([
-                '_controllerNamespace_',
-                '_controllerClassname_',
-            ], [
-                $controllerNamespaceParent,
-                $className,
-            ], $content);
-
-            FileSystemTool::mkfile($controllerFile, $content);
-        } else {
-            $this->error("controller model not found: $controllerModelFile");
-        }
-
-
-        return [
-            "routeId" => $routeId,
-            "url" => $url,
-            "controllerFile" => $controllerFile,
-            "routsyFile" => $routsyFile,
-        ];
     }
 
     //--------------------------------------------
@@ -176,12 +171,6 @@ class PageCreatorProgram
     public function setControllerString($controllerString)
     {
         $this->controllerString = $controllerString;
-        return $this;
-    }
-
-    public function setControllerDir($controllerDir)
-    {
-        $this->controllerDir = $controllerDir;
         return $this;
     }
 
