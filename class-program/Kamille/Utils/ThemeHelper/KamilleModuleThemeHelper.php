@@ -12,6 +12,8 @@ class KamilleModuleThemeHelper
     public static function css($fileName)
     {
         $moduleName = static::getModuleName();
+//        HtmlPageHelper::css("/theme/_default_/modules/$moduleName/css/$fileName"); // ?
+//        HtmlPageHelper::css("/theme/$themeName/modules/$moduleName/css/$fileName"); // ?
         HtmlPageHelper::css("/modules/$moduleName/css/$fileName");
     }
 

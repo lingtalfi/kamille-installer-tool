@@ -9,6 +9,7 @@ use Bat\FileSystemTool;
 use Kamille\Architecture\ApplicationParameters\ApplicationParameters;
 use Kamille\Exception\KamilleException;
 use Kamille\Utils\Routsy\Util\ConfigGenerator\ConfigGenerator;
+use Kamille\Utils\Routsy\Util\ConfigGenerator\Exception\ConfigGeneratorException;
 
 class PageCreatorProgram
 {
@@ -30,7 +31,6 @@ class PageCreatorProgram
         $this->routeId = "my_route";
         $this->url = null;
         $this->controllerString = null;
-
 
 
         $this->controllerModel = "Dummy"; // look in assets directory
@@ -78,7 +78,12 @@ class PageCreatorProgram
             $routsyFile = $appDir . "/config/routsy/$env.php";
             $section = "Module $module"; //
             ConfigGenerator::addSectionIfNotExist($routsyFile, $section, "MODULES");
-            ConfigGenerator::addRouteToRoutsyFile($routeId, $routeContent, $routsyFile, $section);
+
+            try {
+                ConfigGenerator::addRouteToRoutsyFile($routeId, $routeContent, $routsyFile, $section);
+            } catch (ConfigGeneratorException $e) {
+                // the route already exists probably
+            }
 
 
             //--------------------------------------------
@@ -95,31 +100,31 @@ class PageCreatorProgram
             $controllerNamespaceParent = implode('\\', $q);
 
 
-
-
             // path to the controller file
             array_shift($q); // remove the Controller prefix
             $pathPart = implode('/', $q);
             $controllerFile = $appDir . "/class-controllers/$pathPart/" . $className . ".php";
 
+            if (false === file_exists($controllerFile)) {
 
 
-            $controllerModelFile = $controllerModelDir . "/$controllerModel" . "ControllerModel.tpl.php";
+                $controllerModelFile = $controllerModelDir . "/$controllerModel" . "ControllerModel.tpl.php";
 
 
-            if (file_exists($controllerModelFile)) {
-                $content = file_get_contents($controllerModelFile);
-                $content = str_replace([
-                    '_controllerNamespace_',
-                    '_controllerClassname_',
-                ], [
-                    $controllerNamespaceParent,
-                    $className,
-                ], $content);
+                if (file_exists($controllerModelFile)) {
+                    $content = file_get_contents($controllerModelFile);
+                    $content = str_replace([
+                        '_controllerNamespace_',
+                        '_controllerClassname_',
+                    ], [
+                        $controllerNamespaceParent,
+                        $className,
+                    ], $content);
 
-                FileSystemTool::mkfile($controllerFile, $content);
-            } else {
-                $this->error("controller model not found: $controllerModelFile");
+                    FileSystemTool::mkfile($controllerFile, $content);
+                } else {
+                    $this->error("controller model not found: $controllerModelFile");
+                }
             }
 
 

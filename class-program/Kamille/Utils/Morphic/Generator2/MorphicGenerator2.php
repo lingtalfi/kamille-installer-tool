@@ -876,8 +876,13 @@ EEE;
 
     protected function _getListConfigFileHeader(array $tableInfo)
     {
-        $s = '<?php ' . PHP_EOL;
-        $s .= 'use Kamille\Utils\Morphic\Helper\MorphicHelper;' . PHP_EOL;
+        $s = '<?php ' . PHP_EOL . PHP_EOL;
+        $s .= <<<EEE
+use Kamille\Utils\Morphic\Helper\MorphicHelper;
+use Module\NullosAdmin\Morphic\Helper\NullosMorphicHelper;
+EEE;
+        $s .= PHP_EOL;
+
         return $s;
     }
 
@@ -960,28 +965,64 @@ EEE;
     protected function _getListConfigFileConfArray(array $tableInfo, array $table2Aliases)
     {
 
-
         $viewId = $tableInfo["table"];
         $table = $tableInfo["table"];
         $originalTable = $table;
         $cols = $tableInfo["columns"];
         $columnTypes = $tableInfo["columnTypes"];
+        $columnTypesPrecision = $tableInfo["columnTypesPrecision"];
         $fks = $tableInfo["fks"];
         $originalRic = $tableInfo["ric"];
         $rcMap = [];
         $headers = [];
         $qCols = [];
+        $colTransformers = [];
+        $searchColumnLists = [];
+        $searchColumnDates = [];
+        $operators = [];
 
 
         foreach ($cols as $col) {
+            $colType = $columnTypes[$col];
 
-            if (false === strpos($columnTypes[$col], 'blob')) {
+            if (false === strpos($colType, 'blob')) {
                 $label = $this->identifierToLabel($col, $table, $tableInfo);
                 $headers[$col] = $label;
                 $qCols[] = 'h.' . $col;
             }
+
+
+            if (false !== strpos($colType, 'text')) {
+                $colTransformers[] = <<<EEE
+        '$col' => NullosMorphicHelper::getStandardColTransformer("toolong"),
+EEE;
+            } elseif (false !== strpos($col, 'color')) {
+                $colTransformers[] = <<<EEE
+        '$col' => NullosMorphicHelper::getStandardColTransformer("color"),
+EEE;
+            } elseif ("date" === $colType || "datetime" === $colType) {
+                $colTransformers[] = <<<EEE
+        '$col' => NullosMorphicHelper::getStandardColTransformer("$colType"),
+EEE;
+                $searchColumnDates[] = $col;
+                $operators[$col . "_low"] = '>=';
+                $operators[$col . "_high"] = '<=';
+            }
         }
 
+
+        foreach ($columnTypesPrecision as $col => $type) {
+            if ('tinyint(1)' === $type) {
+                $colTransformers[] = <<<EEE
+        '$col' => NullosMorphicHelper::getStandardColTransformer("active"),
+EEE;
+
+                $searchColumnLists[] = <<<EEE
+        "$col" => NullosMorphicHelper::getStandardSearchList("active"),
+EEE;
+
+            }
+        }
 
         $reversedKeys = $tableInfo['reversedFks'];
 
@@ -1020,9 +1061,15 @@ EEE;
             }
             $rcMap[$name][] = $prefix . "." . $repr;
             $qCols[] = 'concat( ' . $sRic . ', ". ", ' . $prefix . "." . $repr . ' ) as `' . $name . '`';
-
-
         }
+
+
+        foreach ($searchColumnDates as $colDate) {
+            $rcMap[$colDate . "_low"] = "h.$colDate";
+            $rcMap[$colDate . "_high"] = "h.$colDate";
+        }
+
+
         $headers['_action'] = '';
 
 
@@ -1066,12 +1113,89 @@ EEE;
     "formRouteExtraVars" => \$parentValues,
     'formRoute' => "$tableInfo[route]",    
     'context' => \$context,
-];
-
-
-
 EEE;
 
+
+        //--------------------------------------------
+        // COLS TRANSFORMERS
+        //--------------------------------------------
+        $s .= $this->renderConfigListProperty('colTransformers', $colTransformers);
+
+
+        //--------------------------------------------
+        // SEARCH COLUMN LISTS
+        //--------------------------------------------
+        $s .= $this->renderConfigListProperty('searchColumnLists', $searchColumnLists);
+
+
+        //--------------------------------------------
+        // SEARCH COLUMN DATES
+        //--------------------------------------------
+        if ($searchColumnDates) {
+            $s .= PHP_EOL;
+            $s .= <<<RRR
+    "searchColumnDates" => [
+RRR;
+            foreach ($searchColumnDates as $col) {
+                $col_low = $col . "_low";
+                $col_high = $col . "_high";
+                $s .= PHP_EOL;
+                $s .= <<<EEE
+        "$col" => [
+            '$col_low',
+            '$col_high',
+        ],
+EEE;
+            }
+            $s .= PHP_EOL;
+            $s .= <<<RRR
+    ],
+RRR;
+
+        }
+
+        //--------------------------------------------
+        // OPERATORS
+        //--------------------------------------------
+        if ($operators) {
+            $sOperators = ArrayToStringTool::toPhpArray($operators, null, 4);
+            $s .= PHP_EOL;
+            $s .= <<<EEE
+    'operators' => $sOperators,
+EEE;
+
+        }
+
+
+        //--------------------------------------------
+        // END OF $CONF
+        //--------------------------------------------
+        $s .= <<<EEE
+        
+];
+EEE;
+
+
+        return $s;
+    }
+
+
+    private function renderConfigListProperty($propertyName, array $arrOfLines)
+    {
+        $s = '';
+        if ($arrOfLines) {
+            $s .= PHP_EOL;
+            $s .= <<<EEE
+    '$propertyName' => [
+EEE;
+            $s .= PHP_EOL;
+            foreach ($arrOfLines as $line) {
+                $s .= $line . PHP_EOL;
+            }
+            $s .= <<<EEE
+    ],
+EEE;
+        }
         return $s;
     }
 
@@ -1280,6 +1404,8 @@ EEE;
         }
         $sParent2Route = ArrayToStringTool::toPhpArray($parent2Route, null, 12);
         $constructorExtraStatements = $this->getControllerConstructorExtraStatements();
+        $title = str_replace('"', '\"', ucfirst($tableInfo["labelPlural"]));
+
 
         $s = <<<EEE
         
@@ -1289,6 +1415,7 @@ EEE;
     {
         parent::__construct();
         \$this->configValues = [
+            'title' => "$title",
             'route' => "$originalTableInfo[route]",
             'form' => "$originalTableInfo[table]",
             'list' => "$originalTableInfo[table]",
@@ -1441,8 +1568,6 @@ EEE;
         $newItemBtnText = $this->getControllerNewItemBtnText($tableInfo);
 
 
-        $title = ucfirst($tableInfo["labelPlural"]);
-
         $s = <<<EEE
         
     protected function renderWithNoParent()
@@ -1457,7 +1582,7 @@ EEE;
             }
 
             return \$this->doRenderFormList([
-                'title' => "$title",
+                'title' => \$this->configValues['title'],
                 'breadcrumb' => "$tableInfo[table]",
                 'form' => \$this->configValues['form'],
                 'list' => \$this->configValues['list'],
@@ -1565,6 +1690,7 @@ EEE;
             }
 
             $text = $this->getForeignKeyExtraLinkText($label, $tableInfo, $fkTableInfo);
+            $text = str_replace("'", "\'", $text);
 
             return "
                 'extraLink' => [

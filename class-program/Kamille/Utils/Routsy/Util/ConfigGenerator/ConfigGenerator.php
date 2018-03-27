@@ -100,10 +100,10 @@ EEE;
                 $lineNumber += 3; // sections are comments on 3 lines...
                 FileTool::insert($lineNumber, $routeContent . PHP_EOL, $routsyFile);
             } else {
-                throw new \Exception("route already exists with id $routeId");
+                throw new ConfigGeneratorException("route already exists with id $routeId");
             }
         } else {
-            throw new \Exception("routsy file not found: $routsyFile");
+            throw new ConfigGeneratorException("routsy file not found: $routsyFile");
         }
     }
 
@@ -170,7 +170,6 @@ EEE;
     {
         $n = ClassCookerHelper::getSectionLineNumber($section, $file);
         if (false === $n) {
-
             throw new ConfigGeneratorException("section not found $section");
         }
         return $n;
