@@ -9,6 +9,7 @@ use Bat\UriTool;
 use Kamille\Architecture\Controller\Exception\ClawsHttpResponseException;
 use Kamille\Architecture\Response\Web\RedirectResponse;
 use QuickPdo\QuickPdo;
+use QuickPdo\QuickPdoInfoTool;
 use QuickPdo\QuickPdoStmtTool;
 use SokoForm\Form\SokoFormInterface;
 
@@ -35,7 +36,13 @@ class MorphicHelper
         if ($parentKeys) {
             $avatar = MorphicHelper::getFormContextValue("avatar", $context);
 
-            $q .= " where ";
+            if (false === QuickPdoStmtTool::hasWhere($q)) {
+                $q .= " where ";
+            }
+            else{
+                $q .= " and ";
+            }
+
             $hasWhere = true;
             $c = 0;
             foreach ($parentKeys as $key) {

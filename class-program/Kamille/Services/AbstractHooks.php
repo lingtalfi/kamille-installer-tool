@@ -9,6 +9,34 @@ use Kamille\Services\Exception\HooksException;
 use Kamille\Services\Exception\XException;
 use Kamille\Utils\ModuleInstallationRegister\ModuleInstallationRegister;
 
+
+/**
+ * Hook name
+ * =================
+ * As of today, there is no strict rule about hook name convention,
+ * but I personally believe the following syntax makes sense:
+ *
+ * - <module> "_" <areaOfTheModule> "_" <function>
+ *
+ * Example:
+ * - Ekom_Back_UserInfoController_decorateModel
+ * With:
+ *      - module: Ekom
+ *      - areaOfTheModule: Back_UserInfoController
+ *      - function: decorateModel
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ */
 class AbstractHooks
 {
 

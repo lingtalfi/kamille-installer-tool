@@ -13,7 +13,7 @@ class LingFrenchMorphicGeneratorHelper
      * Note: dump in your browser and copy/paste the source code of
      * the html page...
      */
-    public static function dumpTableBluePrint($prefix, $db = null)
+    public static function dumpTableBluePrint($prefix, $db = null, $return = false)
     {
         if (null === $db) {
             $db = QuickPdoInfoTool::getDatabase();
@@ -42,6 +42,9 @@ EEE;
 EEE;
         $s .= PHP_EOL;
 
+        if (true === $return) {
+            return $s;
+        }
         echo $s;
     }
 
@@ -50,7 +53,7 @@ EEE;
      * Note: dump in your browser and copy/paste the source code of
      * the html page...
      */
-    public static function dumpColsBluePrint($prefix, $db = null)
+    public static function dumpColsBluePrint($prefix, $db = null, $return = false)
     {
         if (null === $db) {
             $db = QuickPdoInfoTool::getDatabase();
@@ -88,7 +91,9 @@ EEE;
 </cols>
 EEE;
         $s .= PHP_EOL;
-
+        if (true === $return) {
+            return $s;
+        }
         echo $s;
     }
 }
