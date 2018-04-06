@@ -174,7 +174,7 @@ Voici les propriétés disponibles pour le fichier de configuration des listes m
 
 
 - `title`: le titre de la liste
-- `table`: une référence de la table. Est utilisée par l'ajax service back.morphic (`service/NullosAdmin/ecp/api.php`)  
+- `table`: une référence de la table. Est utilisée par l'ajax service back.morphic (`service/NullosAdmin/ecp/api.php`), entre autres pour supprimer un enregistrement.  
 - `object`: une référence vers un objet [xiao](https://github.com/lingtalfi/XiaoApi) qui vous permet de gérer des hooks supplémentaires. Est utilisée par l'ajax service back.morphic (`service/NullosAdmin/ecp/api.php`)
 Si vous définissez `object`, alors object sera utilisé à la place de table.  
 - `viewId`: optionnel, l'identifiant de la liste (par exemple: back/catalog/product). Il est transmis via ajax par la couche morphic.js de manière à synchroniser la liste
@@ -191,17 +191,33 @@ générée par ajax et celle générée statiquement. Il est conseillé de ne pa
 - `colTransformers`: un tableau de `column` => callback permettant de transformer les colonnes. 
         callback ( columnValue, array row )
 
+- `searchColumnLists`: un tableau de `columnName` => "tableau de clé => valeur". Ces listes permettront de filtrer la colonne désignée.<br>
+    Visuellement, la liste remplacera le input de recherche permettant de filtrer les colonnes.
+- `searchColumnDates`: un tableau de `columnName` => `[columnNameDateLow, columnNameDateHigh]`.
+    Visuellement, le but est de remplacer le input classique de recherche par 2 inputs de date: un pour indiquer
+    la date minimum (borne inférieure), et un pour indiquer la date max (borne supérieure).
+    - columnNameDateLow: le nom du champ date minimum
+    - columnNameDateHigh: le nom du champ date maximum
+- `operators`: un tableau de `columnName` => opérateur.
+    L'opérateur est utilisé dans la clause where.
+    L'opérateur par défaut est like, et vous pouvez le surcharger ici.
+    Notamment, ce système est utilisé lorsque searchColumnDates est utilisé, par exemple:
+    - date_low: >=
+    - date_high: <=
+
 - `formRoute`: la route du lien vers le formulaire correspondant. Ce mécanisme est utilisé dans la rowAction "update" par défaut 
 - `formRouteUseRic`: bool=true, doit-on utiliser les valeurs ric dans la génération de la rowAction "update" par défaut
 - `formRouteExtraVars`: des paramètres supplémentaires (clé => valeur) à ajouter au lien généré avec la propriété `formRoute`.
 On peut utiliser les valeurs de row en préfixant la valeur par le symbole $. Exemple: test => $product_id est transformé en test => $row[product_id] 
 - `rowActionUpdateRicAdaptor`: un adaptateur (map) permettant de modifier les colonnes définies dans ric en d'autres champs pour ce qui concerne la génération du lien pour la rowAction "update" par défaut 
 - `formRouteExtraActions`: un tableau d'actions supplémentaires à ajouter aux rowActions par défaut (même stucture que `rowActions`)   
-- `rowActions`: laisser vide pour utiliser les actions par défaut. Un tableau d'action.
+- `rowActions`: laisser vide pour utiliser les actions par défaut. Un tableau d'action. Chaque action est un tableau avec la structure suivante:
     - `name`: le nom symbolique de l'action (ex: update)             
     - `label`: le label (exemple: Modifier)             
     - `icon`: ex fa fa-pencil             
-    - `link`: le lien             
+    - `link`: le lien.
+        Si le lien est un callback, il recevra les arguments suivants: 
+        - row (le tableau des valeurs de la ligne)                         
     - `?ecp`: pour appeler un service ecp en background, à utiliser **à la place** de link. La chaîne ecp correspond à l'argument target dont la syntaxe est la suivante: &lt;moduleName> &lt;:> &lt;serviceIdentifier>.
     Il est possible de passer des arguments avec la propriété `args`.            
     - `?ecpAfter`: fonctionne seulement si la propriété `ecp` est positionnée. L'action javascript à appeler après que la requête ecp se soit exécutée avec succès. Les valeurs possibles sont:

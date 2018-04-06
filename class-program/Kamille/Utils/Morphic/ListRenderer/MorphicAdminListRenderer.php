@@ -62,6 +62,9 @@ class MorphicAdminListRenderer
         if (array_key_exists('realColumnMap', $config)) {
             $util->setRealColumnMap($config['realColumnMap']);
         }
+        if (array_key_exists('groupBy', $config) && $config['groupBy']) {
+            $util->setGroupBy($config['groupBy']);
+        }
         if (array_key_exists('having', $config)) {
             $util->setHaving($config['having']);
         }

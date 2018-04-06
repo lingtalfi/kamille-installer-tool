@@ -5,6 +5,7 @@ namespace Kamille\Utils\Morphic\Helper;
 
 
 use Bat\SessionTool;
+use Bat\StringTool;
 use Bat\UriTool;
 use Kamille\Architecture\Controller\Exception\ClawsHttpResponseException;
 use Kamille\Architecture\Response\Web\RedirectResponse;
@@ -34,12 +35,9 @@ class MorphicHelper
 
 
         if ($parentKeys) {
-            $avatar = MorphicHelper::getFormContextValue("avatar", $context);
-
             if (false === QuickPdoStmtTool::hasWhere($q)) {
                 $q .= " where ";
-            }
-            else{
+            } else {
                 $q .= " and ";
             }
 
@@ -50,7 +48,7 @@ class MorphicHelper
                     $q .= " and ";
                 }
                 $value = MorphicHelper::getFormContextValue($key, $context);
-                $q .= "h.$key=$value";
+                $q .= "h.$key='$value'";
                 $parentValues[$key] = $value;
 
                 if (array_key_exists($key, $queryInferred)) {
@@ -69,7 +67,7 @@ class MorphicHelper
                 if (0 !== $c++) {
                     $q .= ' and ';
                 }
-                $q .= "h.$k=$v";
+                $q .= "h.$k='$v'";
             }
         }
         return $parentValues;
@@ -129,7 +127,7 @@ class MorphicHelper
     }
 
 
-    public static function getFeedFunction($table, callable $onFeedAfter = null, array $ricMap = [])
+    public static function getFeedFunction($table, callable $onFeedAfter = null, array $ricMap = [], array $options = [])
     {
         $p = explode('.', $table, 2);
         if (2 === count($p)) {
@@ -137,12 +135,12 @@ class MorphicHelper
         } else {
             $table = "`$table`";
         }
-        return self::getFeedFunctionByQuery("select * from $table", $onFeedAfter, $ricMap);
+        return self::getFeedFunctionByQuery("select * from $table", $onFeedAfter, $ricMap, $options);
     }
 
-    public static function getFeedFunctionByQuery($query, callable $onFeedAfter = null, array $ricMap = [])
+    public static function getFeedFunctionByQuery($query, callable $onFeedAfter = null, array $ricMap = [], array $options = [])
     {
-        return function (SokoFormInterface $form, array $ric) use ($query, $onFeedAfter, $ricMap) {
+        return function (SokoFormInterface $form, array $ric) use ($query, $onFeedAfter, $ricMap, $options) {
             if ($ricMap) {
                 $oldRic = $ric;
                 $ric = [];
@@ -158,9 +156,19 @@ class MorphicHelper
             $markers = [];
             $values = array_intersect_key($_GET, array_flip($ric));
             $q = $query;
+
             QuickPdoStmtTool::addWhereEqualsSubStmt($values, $q, $markers);
             $row = QuickPdo::fetch("$q", $markers);
             if ($row) {
+
+                $filters = $options['filters'] ?? [];
+                if (array_key_exists("unserializeArray", $filters)) {
+                    foreach ($filters['unserializeArray'] as $col) {
+                        if (array_key_exists($col, $row) && null !== $row[$col]) {
+                            $row[$col] = StringTool::unserializeAsArray($row[$col]);
+                        }
+                    }
+                }
                 $form->inject($row);
             }
 
@@ -168,6 +176,17 @@ class MorphicHelper
                 $onFeedAfter($form);
             }
         };
+    }
+
+    public static function applyPostFilters(array &$data, array $filters = [])
+    {
+        if (array_key_exists('serializeIfArray', $filters)) {
+            foreach ($filters['serializeIfArray'] as $col) {
+                if (array_key_exists($col, $data) && is_array($data[$col])) {
+                    $data[$col] = serialize($data[$col]);
+                }
+            }
+        }
     }
 
 

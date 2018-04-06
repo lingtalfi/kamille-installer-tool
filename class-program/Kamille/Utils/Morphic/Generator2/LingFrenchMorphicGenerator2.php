@@ -44,6 +44,11 @@ class LingFrenchMorphicGenerator2 extends ModuleMorphicGenerator2
         return $this;
     }
 
+    protected function getRelatedTablesLabel()
+    {
+        return "Tables liées";
+    }
+
 
     protected function decorateTableInfo(array &$tableInfo)
     {
@@ -96,6 +101,12 @@ class LingFrenchMorphicGenerator2 extends ModuleMorphicGenerator2
         $label = $tableInfo['label'];
         return "Ajouter $sGenre $label";
     }
+
+    protected function getRowActionUpdateForeignRecord(array $tableInfo)
+    {
+        return "Modifier " . $this->getLeMachin($tableInfo);
+    }
+
 
     protected function getColumnLabelFromName($colName, $table, array $tableInfo)
     {
@@ -246,6 +257,13 @@ EEE;
         return $s;
     }
 
+
+    protected function getChoiceListFirstValueLabel()
+    {
+        return "Aucune valeur";
+    }
+
+
     //--------------------------------------------
     //
     //--------------------------------------------
@@ -260,5 +278,17 @@ EEE;
         }
 
         return false;
+    }
+
+
+    private function getLeMachin(array $tableInfo)
+    {
+        $article = $tableInfo['article'];
+        $label = $tableInfo['label'];
+
+        if ('le' === $article || 'la' === $article) {
+            return $article . " " . $label;
+        }
+        return $article . $label;
     }
 }

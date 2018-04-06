@@ -29,6 +29,7 @@ class MorphicGenerator2 implements MorphicGenerator2Interface
     private $controllerBaseDir;
     private $listConfigFileBaseDir;
     private $formConfigFileBaseDir;
+    private $_relatedTables;
 
 
     public function __construct()
@@ -41,6 +42,9 @@ class MorphicGenerator2 implements MorphicGenerator2Interface
         $this->controllerBaseDir = "/tmp/Morphic2/generated/controller";
         $this->listConfigFileBaseDir = "/tmp/Morphic2/generated/list";
         $this->formConfigFileBaseDir = "/tmp/Morphic2/generated/form";
+
+        //
+        $this->_relatedTables = []; // private cache
     }
 
     public static function create()
@@ -343,7 +347,7 @@ EEE;
                 'action' => "auto.$column",
                 'source' => "/your/service?action=",
                 'minLength' => 0,
-            ]))                        
+            ])                    
 EEE;
     }
 
@@ -598,6 +602,7 @@ EEE;
 
 
                     $sExtra = "";
+                    $sPre = "";
 
 
                     if ($ai === $col) {
@@ -621,7 +626,17 @@ EEE;
                             $readOnly = '(null !== $' . $col . ')';
                             $sExtraLink = $this->getForeignKeyExtraLink('fk', $col, $label, $fkRoute, $tableInfo, $fkTableInfo);
 
+                            if ($isNullable) {
+                                $sPre .= PHP_EOL;
+                                $firstValueLabel = str_replace('"', '\"', $this->getChoiceListFirstValueLabel());
+                                $sPre .= <<<EEE
+                'nullableFirstItem' => "$firstValueLabel",
+EEE;
+
+                            }
+
                         }
+
                     }
 
 
@@ -629,7 +644,7 @@ EEE;
 $class::create()
             ->setName("$col")
             ->setLabel("$label")
-            ->setProperties([
+            ->setProperties([$sPre
                 'readonly' => $readOnly,$sExtraLink
             ])
             ->setValue(\$$col)
@@ -878,6 +893,7 @@ EEE;
     {
         $s = '<?php ' . PHP_EOL . PHP_EOL;
         $s .= <<<EEE
+use Core\Services\A;        
 use Kamille\Utils\Morphic\Helper\MorphicHelper;
 use Module\NullosAdmin\Morphic\Helper\NullosMorphicHelper;
 EEE;
@@ -967,12 +983,15 @@ EEE;
 
         $viewId = $tableInfo["table"];
         $table = $tableInfo["table"];
+        $route = $tableInfo["route"];
         $originalTable = $table;
         $cols = $tableInfo["columns"];
         $columnTypes = $tableInfo["columnTypes"];
         $columnTypesPrecision = $tableInfo["columnTypesPrecision"];
         $fks = $tableInfo["fks"];
         $originalRic = $tableInfo["ric"];
+        $reversedKeys = $tableInfo['reversedFks'];
+        $resolvedFks = $tableInfo['resolvedFks'];
         $rcMap = [];
         $headers = [];
         $qCols = [];
@@ -980,6 +999,8 @@ EEE;
         $searchColumnLists = [];
         $searchColumnDates = [];
         $operators = [];
+        $formRouteExtraActions = [];
+        $col2DateType = [];
 
 
         foreach ($cols as $col) {
@@ -1007,6 +1028,8 @@ EEE;
                 $searchColumnDates[] = $col;
                 $operators[$col . "_low"] = '>=';
                 $operators[$col . "_high"] = '<=';
+
+                $col2DateType[$col] = $colType;
             }
         }
 
@@ -1024,7 +1047,6 @@ EEE;
             }
         }
 
-        $reversedKeys = $tableInfo['reversedFks'];
 
         foreach ($reversedKeys as $fullTable => $v) {
             $p = explode(".", $fullTable);
@@ -1061,7 +1083,28 @@ EEE;
             }
             $rcMap[$name][] = $prefix . "." . $repr;
             $qCols[] = 'concat( ' . $sRic . ', ". ", ' . $prefix . "." . $repr . ' ) as `' . $name . '`';
+
+
         }
+
+
+        $formRouteExtraActionsStatements = [];
+        foreach ($resolvedFks as $col => $info) {
+
+
+            // formRouteExtraActions
+            $foreignTableInfo = $this->db2TableInfo[$info[0]][$info[1]];
+            $foreignRoute = $foreignTableInfo['route'];
+
+            $var = 'update_' . $info[1] . '_link_fmt';
+            $formRouteExtraActions[] = [
+                "foreignTableLinkName" => $var,
+                "updateForeignRecordLabel" => $this->getRowActionUpdateForeignRecord($foreignTableInfo),
+                "foreignKey" => $col,
+            ];
+            $formRouteExtraActionsStatements[] = '$' . $var . ' = A::link("' . $foreignRoute . '") . "?form&' . $info[2] . '=%s";';
+        }
+        $sFormRouteLinks = implode(PHP_EOL, $formRouteExtraActionsStatements);
 
 
         foreach ($searchColumnDates as $colDate) {
@@ -1071,7 +1114,6 @@ EEE;
 
 
         $headers['_action'] = '';
-
 
         $headersVis = [];
         foreach ($fks as $col => $info) {
@@ -1093,7 +1135,7 @@ EEE;
 
 \$parentValues = MorphicHelper::getListParentValues(\$q, \$context);
 
-
+$sFormRouteLinks
 
 \$conf = [
     //--------------------------------------------
@@ -1139,11 +1181,17 @@ RRR;
             foreach ($searchColumnDates as $col) {
                 $col_low = $col . "_low";
                 $col_high = $col . "_high";
+
+                $dateType = $col2DateType[$col];
+                $bool = ("date" === $dateType) ? 'false' : 'true';
+
+
                 $s .= PHP_EOL;
                 $s .= <<<EEE
         "$col" => [
             '$col_low',
             '$col_high',
+            $bool, // $dateType
         ],
 EEE;
             }
@@ -1166,6 +1214,46 @@ EEE;
 
         }
 
+        //--------------------------------------------
+        // FORM ROUTE EXTRA ACTIONS
+        //--------------------------------------------
+        if ($formRouteExtraActions) {
+            $s .= PHP_EOL;
+            $s .= <<<EEE
+    'formRouteExtraActions' => [
+EEE;
+
+            foreach ($formRouteExtraActions as $extraAction) {
+
+                $foreignTableLinkName = $extraAction['foreignTableLinkName'];
+                $updateForeignRecordLabel = str_replace('"', '\"', $extraAction['updateForeignRecordLabel']);
+                $foreignKey = $extraAction['foreignKey']; // assuming only one foreign key is always enough
+//                $foreignKeys = $extraAction['foreignKeys'];
+//                $foreignKeys = array_map(function ($v) {
+//                    return '\$row["' . $v . '"]';
+//                }, $foreignKeys);
+//                $sForeignKeys = implode(', ', $foreignKeys);
+
+
+                $s .= PHP_EOL;
+                $s .= <<<EEE
+        [
+            "name" => "update_ek_product",
+            "label" => "$updateForeignRecordLabel",
+            "icon" => "fa fa-pencil",
+            "link" => function (array \$row) use (\$$foreignTableLinkName) {
+                return sprintf(\$$foreignTableLinkName, \$row["$foreignKey"]);
+            },
+        ],
+EEE;
+
+            }
+            $s .= PHP_EOL;
+            $s .= <<<EEE
+    ],
+EEE;
+        }
+
 
         //--------------------------------------------
         // END OF $CONF
@@ -1179,6 +1267,11 @@ EEE;
         return $s;
     }
 
+
+    protected function getRowActionUpdateForeignRecord(array $tableInfo)
+    {
+        return "Update " . $tableInfo['label'];
+    }
 
     private function renderConfigListProperty($propertyName, array $arrOfLines)
     {
@@ -1261,8 +1354,23 @@ EEE;
         $a['camel'] = $this->getCamelByTable($tableBasicInfo['table']);
         $a['route'] = $this->getTableRouteByTable($a['table']);
         $a["prefix"] = $this->_getTablePrefix($a["table"]);
+        $a["relatedTables"] = $this->_getRelatedTables($a["prefix"], $a['db']);
+
         $this->decorateTableInfo($a);
         return $a;
+    }
+
+
+    private function _getRelatedTables($prefix, $db)
+    {
+
+        $key = $db . "-" . $prefix;
+        if (array_key_exists($key, $this->_relatedTables)) {
+            return $this->_relatedTables[$key];
+        }
+        $relatedTables = QuickPdoInfoTool::getTables($db, $prefix);
+        $this->_relatedTables[$key] = $relatedTables;
+        return $relatedTables;
     }
 
     private function getContentFromCache($db)
@@ -1372,6 +1480,8 @@ namespace Controller\Morphic\Generated\\$tableInfo[camel];
 use Controller\Morphic\Pattern\MorphicListController;
 use Kamille\Utils\Morphic\Exception\MorphicException;
 use Core\Services\A;
+use Bat\UriTool;
+use Models\DropDown\SimpleDropDownModel;
 
 
 class $tableInfo[camel]ListController extends MorphicListController
@@ -1380,6 +1490,12 @@ EEE;
 
         return $s;
 
+    }
+
+
+    protected function getChoiceListFirstValueLabel()
+    {
+        return "No value";
     }
 
     protected function getControllerConstructorExtraStatements()
@@ -1391,6 +1507,8 @@ EEE;
     {
 
         $originalTableInfo = $tableInfo;
+        $originalTable = $originalTableInfo['table'];
+        $db = $tableInfo['db'];
         $parent2Route = [];
         $reversedFks = $tableInfo['reversedFks'];
         if ($reversedFks) {
@@ -1404,7 +1522,39 @@ EEE;
         }
         $sParent2Route = ArrayToStringTool::toPhpArray($parent2Route, null, 12);
         $constructorExtraStatements = $this->getControllerConstructorExtraStatements();
-        $title = str_replace('"', '\"', ucfirst($tableInfo["labelPlural"]));
+        $title = str_replace('"', '\"', ucfirst($originalTableInfo["labelPlural"]));
+
+
+        // related tables?
+        $relatedTables = $originalTableInfo['relatedTables'];
+        if ($relatedTables) {
+
+            $relatedTablesLabel = str_replace('"', '\"', $this->getRelatedTablesLabel());
+            $sItems = '';
+            foreach ($relatedTables as $table) {
+                $tableLabel = str_replace('"', '\"', ucfirst($this->db2TableInfo[$db][$table]['label']));
+                $tableRoute = $this->db2TableInfo[$db][$table]['route'];
+                $sItems .= PHP_EOL;
+                $sItems .= <<<EEE
+                [
+                    'label' => "$tableLabel ($table)",
+                    'link' => A::link("$tableRoute"),
+                ],
+EEE;
+
+            }
+
+            $sRelated = PHP_EOL;
+            $sRelated .= <<<EEE
+        \$pageTop->rightBar()->addDropDown(SimpleDropDownModel::create()
+            ->setLabel("$relatedTablesLabel")
+            ->setItems([
+$sItems
+            ])->getArray()
+        );
+EEE;
+
+        }
 
 
         $s = <<<EEE
@@ -1415,12 +1565,18 @@ EEE;
     {
         parent::__construct();
         \$this->configValues = [
-            'title' => "$title",
             'route' => "$originalTableInfo[route]",
-            'form' => "$originalTableInfo[table]",
-            'list' => "$originalTableInfo[table]",
+            'form' => "$originalTable",
+            'list' => "$originalTable",
+            'showNewItemBtn' => true,            
             'parent2Route' => $sParent2Route,
         ];
+        
+        \$pageTop = \$this->pageTop();
+        \$pageTop->setTitle("$title");    
+        \$pageTop->breadcrumbs()->addLink("$originalTable", UriTool::uri(null, [], false));
+        
+        $sRelated        
         $constructorExtraStatements                        
     }
 
@@ -1565,7 +1721,7 @@ EEE;
         $sRic = implode(PHP_EOL . "\t\t\t\t\t", $ricCols);
 
         $sExtra = $this->_getControllerRenderWithNoParentMethodExtraVar($tableInfo);
-        $newItemBtnText = $this->getControllerNewItemBtnText($tableInfo);
+        $newItemBtnText = str_replace('"', '\"', $this->getControllerNewItemBtnText($tableInfo));
 
 
         $s = <<<EEE
@@ -1581,17 +1737,21 @@ EEE;
                 \$menuCurrentRoute = \$this->configValues['route'];
             }
 
+
+            if (false === array_key_exists("form", \$_GET) && true === \$this->configValues['showNewItemBtn']) {
+                \$this->pageTop()->rightBar()
+                    ->prependButton("$newItemBtnText",
+                        A::link(\$this->configValues['route']) . "?form&s",
+                        "fa fa-plus-circle"
+                    );      
+            }                      
+
             return \$this->doRenderFormList([
-                'title' => \$this->configValues['title'],
-                'breadcrumb' => "$tableInfo[table]",
                 'form' => \$this->configValues['form'],
                 'list' => \$this->configValues['list'],
                 'ric' => [
                     $sRic
                 ],
-
-                "newItemBtnText" => "$newItemBtnText",
-                "newItemBtnLink" => A::link(\$this->configValues['route']) . "?form&s",
                 "route" => \$this->configValues['route'],
                 $sExtra
                 "menuCurrentRoute" => \$menuCurrentRoute,
@@ -1708,6 +1868,12 @@ EEE;
         return "Create a new element \"$label\"";
 //        return "Créer un nouvel élément \"$label\"";
     }
+
+    protected function getRelatedTablesLabel()
+    {
+        return ucfirst("Related tables");
+    }
+
     //--------------------------------------------
     //
     //--------------------------------------------

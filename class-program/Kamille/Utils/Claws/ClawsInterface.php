@@ -13,7 +13,7 @@ interface ClawsInterface
      *                      the default ClawsLayout instance will be used to hold it.
      * @return $this
      */
-    public function setLayout($layout);
+    public function setLayout(string $layout);
 
     /**
      * @return ClawsLayout
@@ -36,10 +36,12 @@ interface ClawsInterface
      * @param $position , string: the widget position as defined in doc/claws/widget-position.md
      * @return $this
      */
-    public function setWidget($id, ClawsWidget $widget, $position = null);
+    public function setWidget(string $id, ClawsWidget $widget, string $position = null);
 
 
-    public function removeWidget($id);
+    public function removeWidget(string $id);
+
+    public function removeWidgetsByPosition(string $position);
 
     public function toArray();
 

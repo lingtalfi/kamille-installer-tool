@@ -4,10 +4,39 @@
 namespace Kamille\Utils\Morphic\Generator2\Helper;
 
 
+use Kamille\Architecture\ApplicationParameters\ApplicationParameters;
 use QuickPdo\QuickPdoInfoTool;
 
 class LingFrenchMorphicGeneratorHelper
 {
+
+
+    public static function injectTranslations(array &$info, string $prefix, string $moduleName)
+    {
+        $lang = $info['lang'];
+        switch ($lang) {
+            case "fra":
+                $filePrefix = rtrim($prefix, '_');
+                $appDir = ApplicationParameters::get("app_dir");
+                $moduleDir = $appDir . "/class-modules/$moduleName";
+
+
+                $tableFile = $moduleDir . "/assets/morphic/fra/$filePrefix-morphic-tables.xml";
+                $colFile = $moduleDir . "/assets/morphic/fra/$filePrefix-morphic-cols.xml";
+
+                if (file_exists($tableFile)) {
+                    $info['tables'][$prefix] = $tableFile;
+                }
+
+                if (file_exists($colFile)) {
+                    $info['cols'][$prefix] = $colFile;
+                }
+
+                break;
+            default:
+                break;
+        }
+    }
 
     /**
      * Note: dump in your browser and copy/paste the source code of

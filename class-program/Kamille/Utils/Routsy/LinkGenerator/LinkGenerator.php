@@ -6,6 +6,7 @@ namespace Kamille\Utils\Routsy\LinkGenerator;
 
 use Kamille\Architecture\ApplicationParameters\ApplicationParameters;
 use Kamille\Services\XLog;
+use Kamille\Utils\Routsy\Exception\RoutsyException;
 
 class LinkGenerator implements LinkGeneratorInterface
 {
@@ -49,7 +50,7 @@ class LinkGenerator implements LinkGeneratorInterface
         $msg = "Route not found: $routeId";
         XLog::error($msg);
         if (true === ApplicationParameters::get("debug")) {
-            throw new \Exception($msg);
+            throw new RoutsyException($msg);
         }
     }
 

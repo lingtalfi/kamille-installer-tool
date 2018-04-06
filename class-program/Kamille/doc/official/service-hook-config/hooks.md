@@ -96,3 +96,56 @@ use Core\Services\Hooks;
 $controllerString = "";
 Hooks::call("Core_Controller_onControllerStringReceived", $controllerString);
 ```
+
+
+
+
+Philosophie des hooks
+-----------------------
+Comme dit plus haut, un hook appartient à un module (il est techniquement possible de déroger à cette règle, mais cela n'apporte
+pas un grand intérêt dans cette discussion).
+
+Cela signifie que les `subscribers` (ceux qui s'inscrivent à un hook) connaissent non seulement le nom du module propriétaire
+du hook, mais également la fonction du hook, grâce au nom de celui-ci.
+
+Par exemple, si on nous donne le nom de hook suivant:
+
+- MyModule_decorateMenu
+
+On comprend tout de suite qu'il s'agit d'un hook appartenant au module `MyModule`, et dont la fonction est de 
+décorer un menu.
+
+Autrement dit, lorsque vous (en tant que module) vous inscrivez à un hook, cela vous donne le droit d'utiliser
+les méthodes du module propriétaire.
+
+
+
+
+C'est à dire qu'en terme de design, les hooks sont comme des tourbillons qui aspirent l'information vers eux plutôt
+que des cailloux tombant dans un lac et poussant vers l'extérieur.
+
+
+> Quand vous pensez hook, pensez tourbillon
+
+
+Cependant, il reste bien évidemment possible de transmettre des informations aux modules clients (ceux qui s'inscrivent
+au hook), afin qu'ils aient le contexte nécessaire pour faire leur job; mais la direction générale reste du client vers 
+le module propriétaire.
+
+
+Une autre manière de voir les choses est la suivante: quand vous vous inscrivez à un hook, pensez que c'est un contrat.
+Le module propriétaire est votre patron et il vous demande une tâche précise. Vous, vous êtes simplement le prestataire 
+chargé de réaliser cette tâche, et avez accès à tous les outils (non seulement
+ceux de votre module, mais également ceux du module propriétaire): vous avez carte blanche pour réaliser ce que le patron 
+vous a demandé.
+
+De plus, vous êtes censé connaître parfaitement les outils du patron, en plus des vôtres.
+
+
+
+
+ 
+  
+
+
+

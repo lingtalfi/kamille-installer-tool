@@ -1,4 +1,4 @@
-#!/usr/bin/env php
+#!/usr/local/bin/php
 <?php
 
 
@@ -52,9 +52,15 @@ $appDir = getcwd();
  *
  */
 $inPlace = false;
+$isWeb = false;
+
 foreach ($argv as $arg) {
     if ('-xx' === $arg) {
         $inPlace = true;
+    }
+
+    if ('--web' === $arg) {
+        $isWeb = true;
     }
 }
 
@@ -97,6 +103,11 @@ if (false === $inPlace) {
 
 
 $output = ProgramOutput::create();
+if (true === $isWeb) {
+    $output->setWebMode(true);
+}
+
+
 
 
 if (class_exists("\Core\Services\A")) {

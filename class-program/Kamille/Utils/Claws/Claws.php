@@ -47,7 +47,7 @@ class Claws implements ClawsInterface
      *                      the default ClawsLayout instance will be used to hold it.
      * @return $this
      */
-    public function setLayout($layout)
+    public function setLayout(string $layout)
     {
         if (is_string($layout)) {
             $layout = ClawsLayout::create()->setTemplate($layout);
@@ -75,17 +75,30 @@ class Claws implements ClawsInterface
      * @param $position , string: the widget position as defined in doc/claws/widget-position.md
      * @return $this
      */
-    public function setWidget($id, ClawsWidget $widget, $position = null)
+    public function setWidget(string $id, ClawsWidget $widget, string $position = null)
     {
         $this->widgets[$id] = $widget;
         $this->widgetId2Pos[$id] = $position;
         return $this;
     }
 
-    public function removeWidget($id)
+    public function removeWidget(string $id)
     {
         unset($this->widgets[$id]);
         unset($this->widgetId2Pos[$id]);
+        return $this;
+    }
+
+    public function removeWidgetsByPosition(string $position)
+    {
+        foreach ($this->widgetId2Pos as $id => $pos) {
+            $p = explode('.', $id, 2);
+            $widgetPos = $p[0];
+            if ($position === $widgetPos) {
+                unset($this->widgets[$id]);
+                unset($this->widgetId2Pos[$id]);
+            }
+        }
         return $this;
     }
 

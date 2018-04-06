@@ -1,7 +1,7 @@
 <?php
 
 
-namespace Module\PeiPei\HooksHelper;
+namespace Module\PeiPei\Helper;
 
 
 use Models\AdminSidebarMenu\Lee\LeeAdminSidebarMenuModel;

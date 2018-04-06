@@ -37,56 +37,103 @@ Cette méthode va effectuer les tâches suivantes:
 
 
 
-Voici la commande abstraite:
+Voici un exemple de commande utilisant un maximum d'options:
 
 ```bash
-kamille newpage {routeId} {url}? {controllerString}? {module}? -e={env}?
+kamille newpage --module=Ekom --uri="/ekom/users/user/info" --route="Ekom_Users_User_Info"  --controller="Controller\Ekom\Back\Users\UserInfoController:render" --controllerModel="EkomInfoLayout"
 ```
 
-- `routeId`: l'id de la route à créer. Celle-ci sera automatiquement préfixée par le nom du module
-- `url`: l'url par laquelle accéder à cette page. Si non renseignée, elle sera devinée d'après routeId (les underscores seront remplacés par des tirets)
-- `controllerString`: &lt;controllerName> &lt;:> &lt;method>
-- `controllerName`: (&lt;absolutePrefix>)? &lt;controllerName>
-    - si absolutePrefix est défini, le chemin du contrôleur  sera absolu (ayant pour namespace de base `Controller\$ModuleName`)
-    - si absolutePrefix n'est pas défini, le chemin du contrôleur sera relatif par rapport au namespace `Controller\$ModuleName\$controllerDir`
-    - $controllerDir est défini par le développeur dans le fichier de configuration, et vaut par défaut "Pages".
-- `absolutePrefix`: ":" (le caractère deux-points)
-- `module`: le module à utiliser. Par défaut: `ThisApp`
-- `env`: l'environnement à utiliser, qui représente le fichier routsy à utiliser (valeurs possibles: back, routes)
+Voici la liste des options possibles:
+
+- `module`: obligatoire, le nom du module pour lequel il faut créer la page
+- `uri`: obligatoire, l'uri qui permet d'accéder à la page
+- `route`: obligatoire, le nom de la route; elle doit commencer par le nom de votre module suivi d'un underscore (par exemple: Ekom_)
+- `controller`: obligatoire, l'identifiant de votre contrôleur; il s'agit dun namespace du contrôleur, suivi du caractère deux-points (:), suivi du nom de la méthode à exécuter
+- `controllerModel`: optionnel, le modèle de contrôleur à utiliser. Votre module peut ajouter ses propres modèles grâce à un hook (voir plus loin).
+    La valeur par défaut est: "Dummy".
+    Le suffixe `ControllerModel` est automatiquement ajouté au nom du modèle pour trouver le fichier de modèle correspondant.
+    De plus, l'extension devra être ".tpl.php".
+    Les valeurs possibles sont:
+        - Dummy: un contrôleur de base avec un texte en mode lorem ipsum
+        - DummyNullos: un contrôleur de base avec un texte en mode lorem ipsum, mais adapté à l'environnement [Nullos](https://github.com/KamilleModules/NullosAdmin) (qui est un module important du framework kamille)
+        - NullosFormList: contrôleur de type FormList (morphic)
+
+- `controllerModelDir`: optionnel, le dossier dans lequel chercher le modèle du contrôleur.
+    Le tag [app] est remplacé par le chemin de l'application (app_dir).
+    La valeur par défaut résoud dans le dossier `planets/Kamille/Utils/Console/assets`
+- `env`: optionnel, le nom de l'environnement dans lequel la page doit être générée. Les valeurs sont possibles sont:
+    - front: la route sera générée dans le fichier `config/routsy/routes.php`   (routes du frontoffice)
+    - back: la route sera générée dans le fichier `config/routsy/back.php`      (routes du backoffice)
+
+    La valeur par défaut est: "front"
 
 
-#### Examples
 
-```bash
- 
-kamille newapp my_page 
-kamille newapp my_page /path/to/my-page
-kamille newapp my_page /path/to/my-page Koo:render      # création du contrôleur dans Controller\ThisApp\Pages
-kamille newapp my_page /path/to/my-page :Koo:render     # création du contrôleur directement dans Controller\ThisApp
-kamille newapp my_page /path/to/my-page Koo:render -e=back 
 
-```
+
+
 
 #### Le fichier de configuration
 
-Cette commande peut travailler avec un fichier de configuration, qui permet d'éviter de taper certains arguments
+Il est possible de travailler avec un fichier de configuration afin d'éviter de répéter certains arguments.
+Toutes les options décrites plus haut peuvent être incorporées dans le fichier de configuration.
 
-Le fichier de configuration doit être situé à la racine de votre application et doit se nommer `kit-newpage.ini`.
+Si l'utilisateur déclare une option en ligne de commande, et la même option dans le fichier de configuration,
+alors l'option déclarée en ligne de commandes est évidemment prioritaire.
+
+
+Le fichier de configuration doit se trouver à la racine de votre application et doit se nommer `kit-newpage.ini`.
 
 La syntaxe utilisée est celle d'un fichier de configuration php.
 
-Voici les valeurs possibles:
+Voici un exemple:
 
 ```ini
+; kamille newpage --module=Ekom --uri="/ekom/users/user/list" --route="Ekom_Users_User_List"  --controller="Controller\Ekom\Back\Users\UserListController:render"
+
+
+; ------------------------------
+; MODELS
+; ------------------------------
+; kamille newpage --module=Ekom --uri="/ekom/users/user/info" --route="Ekom_Users_User_Info"  --controller="Controller\Ekom\Back\Users\UserInfoController:render" --controllerModel="EkomInfoLayout"
+;
+; ekom provides the following models:
+; - EkomInfoLayout: a controller showing a basic info page for your backoffice (nullos)
+; - DummyEkomBackList: a standard form/list backoffice page, using morphic
+; - DummyEkomBack: old version DummyEkomBackList (deprecated)
+;
 controllerModelDir = [app]/class-modules/Ekom/Kit/PageCreator/assets
-controllerModel = DummyEkomBack
-defaultEnv = back
-defaultModule = Ekom
-controllerDir = Pages
+controllerModel = DummyEkomBackList
+controllerDir = Back/Users
+env = back
+
+
 ```
 
-- Le controller Model permet d'utiliser les modèles de contrôleur situés dans le dossier (`planets/Kamille/Utils/Console/assets`).
-- pour définir un autre dossier, utilisez controllerModelDir. Le tag [app] représente le chemin absolu de l'application
+
+#### Créer ses propres modèles de contrôleur
+
+Pour créer vos propres modèles, vous devez spécifier l'option `controllerModelDir` qui indique le dossier dans lequel se trouve votre modèle,
+ainsi que l'option `controllerModel`, qui indique le nom du modèle à utiliser.
+
+Attention à bien nommer votre modèle en terminant par le suffixe `ControllerModel`, et à utiliser l'extension ".tpl.php"
+Par exemple, si vous utilisez cette commande:
+
+```bash
+kamille newpage ... --controllerModelDir="[app]/class-modules/Ekom/Kit/PageCreator/assets" --controllerModel="EkomInfoLayout"
+```
+
+Alors le fichier de modèle à créer devra être situé ici: `class-modules/Ekom/Kit/PageCreator/assets/EkomInfoLayoutControllerModel.tpl.php`
+
+Le contenu du modèle est exactement le contrôleur que vous souhaitez utiliser, avec deux contraintes:
+
+- le namespace doit être remplacé par: `_controllerNamespace_` (la commande newpage remplacera ce tag par le namespace réel, en fonction des paramètres de la commande
+- idem pour le nom de la classe qui doit être remplacé par: `_controllerClassname_`
+
+
+Une fois ces contraintes honorées, vous pouvez générer vos pages avec vos modèles :)
+
+
 
 
  
