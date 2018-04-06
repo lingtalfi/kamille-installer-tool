@@ -108,8 +108,6 @@ if (true === $isWeb) {
 }
 
 
-
-
 if (class_exists("\Core\Services\A")) {
     \Core\Services\A::quickPdoInit();
 }
@@ -160,3 +158,8 @@ KamilleApplicationItemManagerProgram::create()
     ->setModulesImportDirectory($modulesImportDir)
     ->setWidgetsImportDirectory($widgetsImportDir)
     ->start();
+
+
+
+// exit with error code
+exit($output->getNbErrors());

@@ -50,11 +50,15 @@ class ProgramOutput extends Output implements ProgramOutputInterface
 
     private $dampened;
     private $webMode;
+    private $nbErrors;
+    private $nbWarnings;
 
     public function __construct()
     {
         $this->dampened = [];
         $this->webMode = false;
+        $this->nbErrors = 0;
+        $this->nbWarnings = 0;
     }
 
     public static function create()
@@ -68,6 +72,22 @@ class ProgramOutput extends Output implements ProgramOutputInterface
         return $this;
     }
 
+    /**
+     * @return int
+     */
+    public function getNbErrors(): int
+    {
+        return $this->nbErrors;
+    }
+
+    /**
+     * @return int
+     */
+    public function getNbWarnings(): int
+    {
+        return $this->nbWarnings;
+    }
+
 
     public function success($msg, $lbr = true)
     {
@@ -77,11 +97,13 @@ class ProgramOutput extends Output implements ProgramOutputInterface
     public function error($msg, $lbr = true)
     {
         $this->writeMessage('error', $msg, "0;31", $lbr);
+        $this->nbErrors++;
     }
 
     public function warn($msg, $lbr = true)
     {
         $this->writeMessage('warn', $msg, "1;33", $lbr);
+        $this->nbWarnings++;
     }
 
     public function info($msg, $lbr = true)

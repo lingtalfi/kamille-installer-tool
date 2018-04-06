@@ -51,6 +51,10 @@ So, if you don't understand what I'm trying to explain, this probably means that
 History Log
 ------------------
     
+- 1.7.0 -- 2018-04-06
+
+    - add getNbErrors and getNbWarnings methods
+    
 - 1.6.0 -- 2018-04-06
 
     - add setWebMode method
